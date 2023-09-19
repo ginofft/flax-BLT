@@ -41,7 +41,7 @@ class LayoutDataset:
         self.LABEL_TO_ID = config.LABEL_TO_ID_
 
     def _setup_vocab(self):
-        self.pad_idx, self.bos_idx, self.eos_idx, self.unk_idx = 0, 1, 2, 3
+        self.pad_idx, self.bos_idx, self.eos_idx, self.mask_idx = 0, 1, 2, 3
         self.offset_class = 4
         self.offset_center_x = self.offset_class + self.number_classes
         self.offset_center_y = self.offset_center_x + self.resolution_w
@@ -82,7 +82,7 @@ class LayoutDataset:
         return self.data[idx]
     
 @dataclass
-class SmartCollator():
+class PaddingCollator():
     """ This class provide methods for dynamic padding
 
     Attributes
@@ -96,13 +96,13 @@ class SmartCollator():
         take in a batch of tokenized sentences with various length. Then pad them all to the longest sentence in the pad
     """
     pad_token_id: int
+    seq_len: int
     def pad_seq(self, seq:List[int], max_batch_len: int, pad_value:int)->List[int]:
         return seq + (max_batch_len - len(seq)) * [pad_value]
 
-    def collate_dynamic_padding(self, batch) -> torch.Tensor:
+    def collate_padding(self, batch) -> torch.Tensor:
         batch_input = []
-        max_size = max([len(ex) for ex in batch])
         for seq in batch:
-            batch_input += [self.pad_seq(seq, max_size, self.pad_token_id)]
+            batch_input += [self.pad_seq(seq, self.seq_len, self.pad_token_id)]
             
         return np.array(batch_input, dtype=np.int32)
