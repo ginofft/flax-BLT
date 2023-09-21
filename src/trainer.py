@@ -8,6 +8,7 @@ from clu import metrics
 
 from functools import partial
 
+from .dataset import LayoutDataset, PaddingCollator
 from .models.biodirectional_layout import BLT
 from .utils import attribute_random_masking
 
@@ -84,6 +85,9 @@ class BERTLayoutTrainer:
             metrics=Metrics.empty()
         )
     
+    def train(self):
+        pass
+        
     @partial(jit, static_argnums=(0,))
     def train_step(self,
                     state,

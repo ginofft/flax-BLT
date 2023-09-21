@@ -8,6 +8,38 @@ DEFAULT_RESOLUTION_WIDTH = 32
 DEFAULT_RESOLUTION_HEIGHT = 32
 
 class LayoutDataset:
+    """Layout Dataset for training using vocabulary similar to NLP task.
+    A datapoint is an array [int] where each element is the index of the corresponding vocab
+
+    Attributes
+    ----------
+    limit : int
+        Maximum no. layout elements.
+    seq_len : int
+        sequen length, currently is 5*limit -> subject to change (for 3d data)
+    resolution_w : int
+        discrete width resolution
+    resolution_h : int
+        discrte height resolution
+    data : list[list[int]]
+        each element is a layout, each layout is a set of token describing the layout
+    ..._idx : int
+        special token
+    offset_class : int
+        beginning token of classes
+    offset_center_x : int
+        begining token of the center coordinate - in x (horizontal) dimension
+    offset_center_y : int
+        begining token of the center coordinate - in y (vertical) dimension
+    offset_width : int
+        begining token of the layout's element width
+    offset_height : int
+        begining token of the layout's element height 
+    name : str
+        dataset name
+    add_bos : boolean
+        whether or not to add [eos] and [bos] token    
+    """
     def __init__(self,
                  name,
                  path,
@@ -16,6 +48,26 @@ class LayoutDataset:
                  resolution_w = DEFAULT_RESOLUTION_WIDTH,
                  resolution_h = DEFAULT_RESOLUTION_HEIGHT,
                  limit = 22):
+        """Creating a Layout dataset
+
+        Parameters
+        ----------
+        name : str
+            dataset name
+        path : pathlib.Path
+            Path to JSON file
+        config : Any
+            A config with certain attributes (or field), which includes: 
+            FRAME_WIDTH, FRAME_HEIGHT, COLORS, LABEL_NAMES, NUMBER_LABELS, ID_TO_LABEL, LABEL_TO_ID_
+        add_bos : Boolean
+            Whether or not to include [bos] and [eos] token
+        resolution_w : int
+            discrete resolution of width
+        resolution_h : int 
+            discrete resolution of height
+        limit : int
+            maximum no. elements
+        """
         if config is None:
             raise Exception("Please provide a data config file!!")
         else:
@@ -32,6 +84,8 @@ class LayoutDataset:
         self.data = self._convert_data_to_model_format(data)
         
     def _process_config(self, config):
+        """Reading config
+        """
         self.FRAME_WIDTH = config.FRAME_WIDTH
         self.FRAME_HEIGHT = config.FRAME_HEIGHT
         self.COLORS = config.COLORS
@@ -41,6 +95,8 @@ class LayoutDataset:
         self.LABEL_TO_ID = config.LABEL_TO_ID_
 
     def _setup_vocab(self):
+        """Setup vocabularies, consists of: special tokens, class tokens, center position tokens, width and height tokens
+        """
         self.pad_idx, self.bos_idx, self.eos_idx, self.mask_idx = 0, 1, 2, 3
         self.offset_class = 4
         self.offset_center_x = self.offset_class + self.number_classes
@@ -53,6 +109,17 @@ class LayoutDataset:
         return self.offset_class + self.number_classes + (self.resolution_w + self.resolution_h)*2
     
     def _convert_data_to_model_format(self, data):
+        """Discretize original data into vocab forms
+
+        Parameters
+        ---------
+        data : List of dictionary, each containg: layout metadata and layout dimensions (scaled to [0,1])
+        
+        Returns
+        -------
+        data : list[list[int]]
+            discritzed version of original data
+        """
         processed_entry = []
         for entries in data: 
             elements = []
@@ -83,16 +150,16 @@ class LayoutDataset:
     
 @dataclass
 class PaddingCollator():
-    """ This class provide methods for dynamic padding
+    """ This class provide methods for collate and padding. Meant to be used with Pytorch's DataLoader
 
     Attributes
     ----------
     pad_token_id : int
-        the token id of [PAD] token, which are usually set by the tokenizer
+        the token id of [PAD] token
     
     Methods
     -------
-    collate_dynamic_paddding(batch)
+    collate_padding(batch)
         take in a batch of tokenized sentences with various length. Then pad them all to the longest sentence in the pad
     """
     pad_token_id: int

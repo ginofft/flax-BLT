@@ -1,6 +1,7 @@
 import jax
 import jax.numpy as jnp
 import ml_collections
+import frozendict
 
 import functools
 
@@ -66,7 +67,7 @@ def get_magazine_config():
 
   config = ml_collections.ConfigDict()
   # Exp info
-  config.dataset_path = "/path/to/magazine"
+  config.dataset_path = "data\layoutdata\json"
   config.dataset = "MAGAZINE"
   config.vocab_size = 137
   config.experiment = "bert_layout"
@@ -116,4 +117,21 @@ def get_magazine_config():
   config.optimizer.weight_decay = 0.01
   config.beta_rate = 1 / 20_000
 
+  # Dataset info
+  config.dataset = ml_collections.ConfigDict()
+  config.dataset.LABEL_NAMES = ("text", "image", "text-over-image", "headline", "headline-over-image")
+  config.dataset.COLORS = {
+        "text": (254, 231, 44),
+        "image": (27, 187, 146),
+        "headline": (255, 0, 0),
+        "text-over-image": (0, 102, 255),
+        "headline-over-image": (204, 0, 255),
+        "background": (200, 200, 200)}
+  config.dataset.FRAME_WIDTH = 225
+  config.dataset.FRAME_HEIGHT = 300
+  config.dataset.ID_TO_LABEL = frozendict.frozendict(
+        {i: v for (i,v) in enumerate(config.dataset.LABEL_NAMES)})
+  config.dataset.LABEL_TO_ID_ = frozendict.frozendict(
+        {l: i for i,l in config.dataset.ID_TO_LABEL.items()})
+    
   return config
