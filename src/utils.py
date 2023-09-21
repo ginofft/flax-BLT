@@ -6,6 +6,9 @@ import frozendict
 import functools
 
 def attribute_random_masking(inputs, mask_token, pad_token, layout_dim):
+    """Repace some token with inputs token. 
+    However, for a specific layout, only token with the same semantic meaning are masked.
+    """
     targets = inputs
     total_dim = layout_dim*2 + 1
     rng = jax.random.PRNGKey(jnp.sum(inputs, dtype='int32'))
@@ -68,18 +71,17 @@ def get_magazine_config():
   config = ml_collections.ConfigDict()
   # Exp info
   config.dataset_path = "data\layoutdata\json"
-  config.dataset = "MAGAZINE"
   config.vocab_size = 137
   config.experiment = "bert_layout"
   config.model_class = "bert_layout"
   config.image_size = 256
 
   # Training info
+  config.epoch = 100
   config.layout_dim = 2
   config.seed = 0
   config.log_every_steps = 100
   config.eval_num_steps = 1000
-  config.max_length = 130
   config.batch_size = 64
   config.train_shuffle = True
   config.eval_pad_last_batch = False
@@ -129,8 +131,10 @@ def get_magazine_config():
         "background": (200, 200, 200)}
   config.dataset.FRAME_WIDTH = 225
   config.dataset.FRAME_HEIGHT = 300
+
   config.dataset.ID_TO_LABEL = frozendict.frozendict(
         {i: v for (i,v) in enumerate(config.dataset.LABEL_NAMES)})
+  config.dataset.NUMBER_LABELS = len(config.dataset.ID_TO_LABEL)
   config.dataset.LABEL_TO_ID_ = frozendict.frozendict(
         {l: i for i,l in config.dataset.ID_TO_LABEL.items()})
     

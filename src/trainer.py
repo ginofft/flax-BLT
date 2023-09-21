@@ -5,6 +5,7 @@ import flax
 from flax.training import train_state
 import optax
 from clu import metrics
+from torch.utils.data import DataLoader
 
 from functools import partial
 
@@ -86,7 +87,55 @@ class BERTLayoutTrainer:
         )
     
     def train(self):
-        pass
+        #Setup Dataset and DataLoader
+        train_dataset = LayoutDataset('train',
+                                      self.config.dataset_path+'/train.json',
+                                      config=self.config.dataset)
+        val_dataset = LayoutDataset('validation',
+                                    self.config.dataset_path+'/val.json',
+                                    config=self.config.dataset)
+        collator = PaddingCollator(pad_token_id=train_dataset.pad_idx, seq_len=train_dataset.seq_len)
+        
+        train_dataloader = DataLoader(train_dataset, batch_size=self.config.batch_size,
+                                      collate_fn=collator.collate_padding,
+                                      shuffle=self.config.train_shuffle)
+        val_dataloader = DataLoader(val_dataset, batch_size=self.config.eval_batch_size,
+                                    collate_fn=collator.collate_padding,
+                                    shuffle=self.config.train_shuffle)
+        #initialization
+        init_batch = jnp.ones((self.config.batch_size, train_dataset.seq_len))
+        init_label = jnp.ones((self.config.batch_size, train_dataset.seq_len))
+        init_batch = dict(inputs=init_batch, labels=init_label)
+        state = self.create_train_state(rng = self.rng, inputs = init_batch)
+        #Begin training/validation Loop
+        metric_history = {'train_loss': [],
+                          'validation_loss': []}
+        for epoch in range(1, self.config.epoch+1):
+            # Train
+            for batch in train_dataloader:
+                batch = attribute_random_masking(batch, mask_token=train_dataset.mask_idx,
+                                                pad_token=train_dataset.pad_idx, layout_dim=self.config.layout_dim)
+                state = self.train_step(state, batch["masked_inputs"],
+                                        batch["targets"], batch["weights"])
+                state = self.compute_metrics(state, batch["masked_inputs"],
+                                            batch["targets"], batch["weights"])
+            for metric, value in state.metrics.compute().items():
+                metric_history[f'train_{metric}'].append(value)
+            
+            #Validate
+            validation_state = state
+            for batch in val_dataloader:
+                batch = attribute_random_masking(batch, mask_token=train_dataset.mask_idx,
+                                                 pad_token=train_dataset.pad_idx, layout_dim=self.config.layout_dim)
+                validation_state = self.compute_metrics(validation_state, batch["masked_inputs"],
+                                                        batch["targets"], batch["weights"])
+            for metric, value in validation_state.metrics.compute().items():
+                metric_history[f'validation_{metric}'].append(value)
+            print(f"Train epoch: {epoch},"
+                  f"loss: {metric_history['train_loss'][-1]}")
+            print(f"Test epoch: {epoch},"
+                  f"loss: {metric_history['validation_loss'][-1]}")
+        
         
     @partial(jit, static_argnums=(0,))
     def train_step(self,
@@ -105,4 +154,18 @@ class BERTLayoutTrainer:
         grads = grad_fn(state.params)
         state = state.apply_gradients(grads=grads)
         return state
-        
+    
+    @partial(jit, static_argnums=(0,))
+    def compute_metrics(self, state, input_ids, labels, mask):
+        logits = state.apply_fn({'params': state.params}, input_ids=input_ids, labels=labels)
+        loss = optax.softmax_cross_entropy_with_integer_labels(logits, labels)
+        loss = loss * mask
+        loss = loss.mean()
+        normalizing_factor = mask.size / mask.sum()
+        loss = loss * normalizing_factor
+        metric_updates = state.metrics.single_from_model_output(
+            loss = loss)
+        metrics = state.metrics.merge(metric_updates)
+        state = state.replace(metrics=metrics)
+        return state
+    
