@@ -70,7 +70,7 @@ def get_magazine_config():
 
   config = ml_collections.ConfigDict()
   # Exp info
-  config.dataset_path = "data\layoutdata\json"
+  config.dataset_path = "data/layoutdata/json"
   config.vocab_size = 137
   config.experiment = "bert_layout"
   config.model_class = "bert_layout"
