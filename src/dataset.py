@@ -160,7 +160,7 @@ class PaddingCollator():
     Methods
     -------
     collate_padding(batch)
-        take in a batch of tokenized sentences with various length. Then pad them all to the longest sentence in the pad
+        take in a batch of tokenized sentences with various length. Pad them all to the longest possible length allowed
     """
     pad_token_id: int
     seq_len: int
@@ -171,5 +171,31 @@ class PaddingCollator():
         batch_input = []
         for seq in batch:
             batch_input += [self.pad_seq(seq, self.seq_len, self.pad_token_id)]
+            
+        return np.array(batch_input, dtype=np.int32)
+    
+@dataclass
+class SmartCollator():
+    """ This class provide methods for collate and dynamic padding. Meant to be used with Pytorch's DataLoader
+
+    Attributes
+    ----------
+    pad_token_id : int
+        the token id of [PAD] token
+    
+    Methods
+    -------
+    collate_dynamic_padding(batch)
+        take in a batch of tokenized sentences with various length. Then pad them all to the longest sentence in the batch
+    """
+    pad_token_id: int
+    def pad_seq(self, seq:List[int], max_batch_len: int, pad_value:int)->List[int]:
+        return seq + (max_batch_len - len(seq)) * [pad_value]
+
+    def collate_dynamic_padding(self, batch) -> torch.Tensor:
+        batch_input = []
+        max_size = max([len(ex) for ex in batch])
+        for seq in batch:
+            batch_input += [self.pad_seq(seq, max_size, self.pad_token_id)]
             
         return np.array(batch_input, dtype=np.int32)
