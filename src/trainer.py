@@ -2,11 +2,12 @@ import jax
 from jax import jit
 import jax.numpy as jnp
 import flax
-from flax.training import train_state, orbax_utils
+from flax.training import train_state, orbax_utils, common_utils
 import optax
 import orbax
 from clu import metrics
 from torch.utils.data import DataLoader
+import numpy as np
 
 from functools import partial
 from typing import Optional
@@ -54,6 +55,57 @@ class BERTLayoutTrainer:
             inputs=batch, mask_token=3,
             pad_token=0, layout_dim=self.layout_dim)
         return batch, label
+    
+    def _make_possible_mask(self, vocab_size, pos_info, seq_len):
+        total_dim = self.layout_dim*2 + 1
+        logit_masks = []
+        offset = jnp.array([pi[0] for pi in pos_info])
+        offset = jnp.expand_dims(offset, 0)
+        asset_offset = jnp.tile(offset, (1, seq_len//total_dim))
+        for idx, pi in enumerate(pos_info):
+            logit_mask = jnp.ones((1,1,vocab_size))
+            pos_mask = jnp.zeros((1,1,pi[1]))
+            logit_mask = jax.lax.dynamic_update_slice(logit_mask, 
+                                                      pos_mask,
+                                                      (0, 0, pi[0]))
+            if idx == 0:
+                logit_mask = logit_mask.at[:,:,2].set(0)
+            logit_masks.append(logit_mask)
+        logit_masks = jnp.concatenate(logit_masks, axis=1)
+        asset_logit_masks = jnp.tile(logit_masks, (1, seq_len//total_dim, 1))
+        if seq_len % total_dim > 0:
+            asset_logit_masks = jnp.concatenate(
+                (asset_logit_masks, logit_masks[:, :(seq_len % total_dim), :]),
+                axis=1)
+            asset_offset = jnp.concatenate(
+                (asset_offset, offset[:, :(seq_len % total_dim)]), axis=1)
+        return asset_logit_masks, asset_offset
+    
+    def _compute_weighted_cross_entropy(self,
+                                        logits,
+                                        targets,
+                                        mask=None,
+                                        logit_mask=None):
+        #mask out impossible tokens
+        if logit_mask is not None:
+            logits = jnp.where(logit_mask>0, 1e-7, logits)
+
+        vocab_size = logits.shape[-1]
+        confidence = 1
+        low_confidence = 1 / (vocab_size-1)
+        soft_targets = common_utils.onehot(targets, vocab_size,
+                                           on_value=1.0, off_value=low_confidence)
+        loss = -jnp.sum(soft_targets * flax.linen.log_softmax(logits), axis=-1)
+        normalizing_constant = -(
+            confidence * jnp.log(confidence) + 
+            (vocab_size - 1) * low_confidence * jnp.log(low_confidence)
+        )
+        loss = loss - normalizing_constant
+        normalizing_factor = np.prod(targets.shape)
+        if mask is not None:
+            loss = loss * mask
+            normalizing_factor = mask.sum()
+        return loss.sum() / normalizing_factor
     
     def _create_optimizer(self):
         opt_def = optax.adamaxw(
@@ -123,10 +175,12 @@ class BERTLayoutTrainer:
         val_dataloader = DataLoader(val_dataset, batch_size=self.config.eval_batch_size,
                                     collate_fn=collator.collate_padding,
                                     shuffle=self.config.train_shuffle)
+        # Setup model's state
         init_batch = jnp.ones((self.config.batch_size, train_dataset.seq_len))
         init_label = jnp.ones((self.config.batch_size, train_dataset.seq_len))
         init_batch = dict(inputs=init_batch, labels=init_label)
         state = self.create_train_state(rng = self.rng, inputs = init_batch)
+
         if self.config.checkpoint_path is not None:
             target = {'model':state, 'metric_history':dict, 'min_loss': float, 'epoch':int}
             ckpt = self._load_checkpoint(target)
@@ -140,6 +194,17 @@ class BERTLayoutTrainer:
                             'validation_loss': []}    
             min_validation_loss = float('inf')
             start_epoch = 0
+
+        # Get possible logit for each position
+        vocab_size = train_dataset.get_vocab_size()
+        pos_info = [[train_dataset.offset_class, train_dataset.number_classes], 
+                    [train_dataset.offset_width, train_dataset.resolution_w],
+                    [train_dataset.offset_height, train_dataset.resolution_h],
+                    [train_dataset.offset_center_x, train_dataset.resolution_w],
+                    [train_dataset.offset_center_y, train_dataset.resolution_h]]
+        seq_len = train_dataset.seq_len
+        possible_logit = self._make_possible_mask(vocab_size=vocab_size, pos_info=pos_info,seq_len=seq_len)
+        # Training / Validation Loop
         for epoch in range(start_epoch+1, self.config.epoch+1):
             # Train
             for batch in train_dataloader:
@@ -182,27 +247,26 @@ class BERTLayoutTrainer:
                     state,
                     input_ids,
                     labels,
-                    mask):
+                    weight_mask = None,
+                    possible_mask = None):
         def loss_fn(params):
             logits = state.apply_fn({'params':params}, input_ids=input_ids, labels=labels)
-            loss = optax.softmax_cross_entropy_with_integer_labels(logits, labels)
-            loss = loss * mask
-            loss = loss.mean()
-            normalizing_factor = mask.size / mask.sum()
-            return loss * normalizing_factor
+            #loss = optax.softmax_cross_entropy_with_integer_labels(logits, labels)
+            loss = self._compute_weighted_cross_entropy(logits, labels, weight_mask, possible_mask)
+            return loss
         grad_fn = jax.grad(loss_fn)
         grads = grad_fn(state.params)
         state = state.apply_gradients(grads=grads)
         return state
     
     @partial(jit, static_argnums=(0,))
-    def compute_metrics(self, state, input_ids, labels, mask):
+    def compute_metrics(self, state, 
+                        input_ids, 
+                        labels, 
+                        weight_mask = None,
+                        possible_mask = None):
         logits = state.apply_fn({'params': state.params}, input_ids=input_ids, labels=labels)
-        loss = optax.softmax_cross_entropy_with_integer_labels(logits, labels)
-        loss = loss * mask
-        loss = loss.mean()
-        normalizing_factor = mask.size / mask.sum()
-        loss = loss * normalizing_factor
+        loss = self._compute_weighted_cross_entropy(logits, labels, weight_mask, possible_mask)
         metric_updates = state.metrics.single_from_model_output(
             loss = loss)
         metrics = state.metrics.merge(metric_updates)

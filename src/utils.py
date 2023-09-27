@@ -30,7 +30,6 @@ def attribute_random_masking(inputs, mask_token, pad_token, layout_dim):
         [position_ids % total_dim == i for i in range(layout_dim+1, total_dim)]
     )
 
-    
     rand = jax.random.uniform(rng, (inputs.shape[0],1))
     pre_masked_inputs = inputs.copy()
     # all token are [MASKED]
