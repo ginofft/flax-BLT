@@ -70,6 +70,7 @@ def get_magazine_config():
 
   config = ml_collections.ConfigDict()
   # Exp info
+  config.checkpoint_path = None
   config.dataset_path = "data/layoutdata/json"
   config.vocab_size = 137
   config.experiment = "bert_layout"
@@ -79,17 +80,12 @@ def get_magazine_config():
   # Training info
   config.epoch = 100
   config.layout_dim = 2
-  config.seed = 0
-  config.log_every_steps = 100
-  config.eval_num_steps = 1000
+  config.seed = 56175
   config.batch_size = 64
   config.train_shuffle = True
   config.eval_pad_last_batch = False
   config.eval_batch_size = 64
-  config.num_train_steps = 30_000
-  config.checkpoint_every_steps = 5000
-  config.eval_every_steps = 5000
-  config.num_eval_steps = 100
+  config.save_every_epoch = 25
 
   # Model info
   config.dtype = "float32"
@@ -104,15 +100,12 @@ def get_magazine_config():
   config.num_heads = 8
   config.dropout_rate = 0.1
   config.attention_dropout_rate = 0.3
-  config.restore_checkpoints = True
   config.label_smoothing = 0.
   config.sampling_method = "top-p"
   config.use_vertical_info = False
 
   # Optimizer info
   config.optimizer = ml_collections.ConfigDict()
-  config.optimizer.type = "adam"
-  config.optimizer.warmup_steps = 4000
   config.optimizer.lr = 5e-3
   config.optimizer.beta1 = 0.9
   config.optimizer.beta2 = 0.98

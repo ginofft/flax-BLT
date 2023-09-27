@@ -2,12 +2,15 @@ import jax
 from jax import jit
 import jax.numpy as jnp
 import flax
-from flax.training import train_state
+from flax.training import train_state, orbax_utils
 import optax
+import orbax
 from clu import metrics
 from torch.utils.data import DataLoader
 
 from functools import partial
+from typing import Optional
+from pathlib import Path
 
 from .dataset import LayoutDataset, PaddingCollator
 from .models.biodirectional_layout import BLT
@@ -24,9 +27,14 @@ class TrainState(train_state.TrainState):
 class BERTLayoutTrainer:
     """BERT-style Layout Trainer"""
 
-    def __init__(self, config, workdir):
+    def __init__(self, config, workdir: Optional[str] = None):
         self.config = config
-        self.workdir = workdir
+        if workdir is not None:
+            self.workdir = Path(workdir)
+            if self.workdir.exists() == False:
+                raise Exception(f"{workdir} does not exist!")
+        else:
+            self.workdir = Path('')
         self.rng = jax.random.PRNGKey(config.seed)
         self.dtype, self.data_dtype = self._get_dtype()
         self.layout_dim = self.config.layout_dim
@@ -55,11 +63,11 @@ class BERTLayoutTrainer:
             weight_decay=self.config.optimizer.weight_decay
         )
         return opt_def
+    
     def create_train_state(
             self,
             rng,
-            inputs
-    ):
+            inputs):
         model = BLT(use_vertical=self.config.use_vertical_info,
                     vocab_size=self.config.vocab_size,
                     hidden_size=self.config.qkv_dim,
@@ -86,6 +94,19 @@ class BERTLayoutTrainer:
             metrics=Metrics.empty()
         )
     
+    def _load_checkpoint(self):
+        orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
+        checkpoint_path = Path(self.config.checkpoint_path)
+        if checkpoint_path.exists() == False:
+            raise Exception(f"{checkpoint_path} does not exits!!")
+        ckpt = orbax_checkpointer.restore(checkpoint_path)
+        return ckpt
+
+    def _save_checkpoint(self, ckpt, name):
+        orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
+        save_args = orbax_utils.save_args_from_target(ckpt)
+        orbax_checkpointer.save(self.workdir/name, ckpt, save_args=save_args)
+
     def train(self):
         #Setup Dataset and DataLoader
         train_dataset = LayoutDataset('train',
@@ -102,15 +123,22 @@ class BERTLayoutTrainer:
         val_dataloader = DataLoader(val_dataset, batch_size=self.config.eval_batch_size,
                                     collate_fn=collator.collate_padding,
                                     shuffle=self.config.train_shuffle)
-        #initialization
-        init_batch = jnp.ones((self.config.batch_size, train_dataset.seq_len))
-        init_label = jnp.ones((self.config.batch_size, train_dataset.seq_len))
-        init_batch = dict(inputs=init_batch, labels=init_label)
-        state = self.create_train_state(rng = self.rng, inputs = init_batch)
-        #Begin training/validation Loop
-        metric_history = {'train_loss': [],
-                          'validation_loss': []}
-        for epoch in range(1, self.config.epoch+1):
+        if self.config.checkpoint_path is not None:
+            ckpt = self._load_checkpoint()
+            state = ckpt['model']
+            metric_history = ckpt['metric_history']
+            min_validation_loss = ckpt['min_loss']
+            start_epoch = ckpt['epoch']
+        else:
+            init_batch = jnp.ones((self.config.batch_size, train_dataset.seq_len))
+            init_label = jnp.ones((self.config.batch_size, train_dataset.seq_len))
+            init_batch = dict(inputs=init_batch, labels=init_label)
+            state = self.create_train_state(rng = self.rng, inputs = init_batch)
+            metric_history = {'train_loss': [],
+                            'validation_loss': []}    
+            min_validation_loss = float('inf')
+            start_epoch = 0
+        for epoch in range(start_epoch+1, self.config.epoch+1):
             # Train
             for batch in train_dataloader:
                 batch = attribute_random_masking(batch, mask_token=train_dataset.mask_idx,
@@ -132,10 +160,20 @@ class BERTLayoutTrainer:
             for metric, value in validation_state.metrics.compute().items():
                 metric_history[f'validation_{metric}'].append(value)
             print(f"Train epoch: {epoch},"
-                  f"loss: {metric_history['train_loss'][-1]}")
+                  f"Loss: {metric_history['train_loss'][-1]}")
             print(f"Test epoch: {epoch},"
-                  f"loss: {metric_history['validation_loss'][-1]}")
-        
+                  f"Loss: {metric_history['validation_loss'][-1]}")
+            
+            validation_loss = metric_history['validation_loss'][-1]
+            if validation_loss < min_validation_loss:
+                min_validation_loss = validation_loss
+                ckpt = {'model': state, 'epoch':epoch, 
+                        'metric_history': metric_history, 'min_loss': min_validation_loss}
+                self._save_checkpoint(ckpt, 'best')
+            if epoch % self.config.save_every_epoch == 0:
+                ckpt = {'model': state, 'epoch':epoch, 
+                        'metric_history': metric_history, 'min_loss': min_validation_loss}
+                self._save_checkpoint(ckpt, f'checkpoint_epoch{epoch}')
         
     @partial(jit, static_argnums=(0,))
     def train_step(self,
