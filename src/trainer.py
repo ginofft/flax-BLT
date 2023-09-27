@@ -105,7 +105,7 @@ class BERTLayoutTrainer:
     def _save_checkpoint(self, ckpt, name):
         orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
         save_args = orbax_utils.save_args_from_target(ckpt)
-        orbax_checkpointer.save(self.workdir/name, ckpt, save_args=save_args)
+        orbax_checkpointer.save(self.workdir/name, ckpt, save_args=save_args, force=True)
 
     def train(self):
         #Setup Dataset and DataLoader
