@@ -94,12 +94,12 @@ class BERTLayoutTrainer:
             metrics=Metrics.empty()
         )
     
-    def _load_checkpoint(self):
+    def _load_checkpoint(self, target):
         orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
         checkpoint_path = Path(self.config.checkpoint_path)
         if checkpoint_path.exists() == False:
             raise Exception(f"{checkpoint_path} does not exits!!")
-        ckpt = orbax_checkpointer.restore(checkpoint_path)
+        ckpt = orbax_checkpointer.restore(checkpoint_path, item=target)
         return ckpt
 
     def _save_checkpoint(self, ckpt, name):
@@ -123,17 +123,19 @@ class BERTLayoutTrainer:
         val_dataloader = DataLoader(val_dataset, batch_size=self.config.eval_batch_size,
                                     collate_fn=collator.collate_padding,
                                     shuffle=self.config.train_shuffle)
+        init_batch = jnp.ones((self.config.batch_size, train_dataset.seq_len))
+        init_label = jnp.ones((self.config.batch_size, train_dataset.seq_len))
+        init_batch = dict(inputs=init_batch, labels=init_label)
+        state = self.create_train_state(rng = self.rng, inputs = init_batch)
         if self.config.checkpoint_path is not None:
-            ckpt = self._load_checkpoint()
+            target = {'model':state, 'metric_history':dict, 'min_loss': float, 'epoch':int}
+            ckpt = self._load_checkpoint(target)
             state = ckpt['model']
+
             metric_history = ckpt['metric_history']
             min_validation_loss = ckpt['min_loss']
             start_epoch = ckpt['epoch']
         else:
-            init_batch = jnp.ones((self.config.batch_size, train_dataset.seq_len))
-            init_label = jnp.ones((self.config.batch_size, train_dataset.seq_len))
-            init_batch = dict(inputs=init_batch, labels=init_label)
-            state = self.create_train_state(rng = self.rng, inputs = init_batch)
             metric_history = {'train_loss': [],
                             'validation_loss': []}    
             min_validation_loss = float('inf')
