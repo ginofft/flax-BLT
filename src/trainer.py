@@ -98,9 +98,8 @@ class BERTLayoutTrainer:
                                            on_value=1.0, off_value=low_confidence)
         loss = -jnp.sum(soft_targets * flax.linen.log_softmax(logits), axis=-1)
         normalizing_constant = -(
-            confidence * jnp.log(confidence) + 
-            (vocab_size - 1) * low_confidence * jnp.log(low_confidence + 1e-20)
-        )
+            confidence * jnp.log(confidence) +
+            (vocab_size - 1) * low_confidence * jnp.log(low_confidence + 1e-20))
         loss = loss - normalizing_constant
         normalizing_factor = np.prod(targets.shape)
         if mask is not None:
