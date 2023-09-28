@@ -26,7 +26,30 @@ class TrainState(train_state.TrainState):
     metrics: Metrics
 
 class BERTLayoutTrainer:
-    """BERT-style Layout Trainer"""
+    """BERT-style Layout Trainer - one stop class for training, inferencing
+
+    Attributes
+    ----------
+    config : ml_collections.ConfigDict
+        Config dictionary for trainer, storing all necessary parameters and path.
+    workdir : str
+        Path to folder,  in which checkpoint would be saved in.
+    layout_dim : int
+        The dimension of the layout. Usually 2 - meaning 2D.
+    rng : Union[Array, PNGKeyArray]
+        JAX's pseduorandom random number generator.
+    
+    Methods
+    -------
+    create_train_state(): 
+        return a FLAX's TrainState, composing of: parameters, optimizer and metrics
+    train():
+        train a model and save into self.workdir. DO NOT return anything
+    test(): 
+        NotDocumented.
+    preprocessbatch():
+        process batch to model's input format. Mainly used to create [MASK] tokens.
+    """
 
     def __init__(self, config, workdir: Optional[str] = None):
         self.config = config
@@ -41,12 +64,6 @@ class BERTLayoutTrainer:
         self.layout_dim = self.config.layout_dim
         self.total_dim = self.layout_dim*2 + 1
 
-    def _get_dtype(self):
-        if self.config.dtype == "bfloat16":
-            return jnp.bfloat16, jnp.bfloat16
-        else:
-            return jnp.float32, jnp.float32
-    
     def preprocess_batch(self, batch, batch_size, dataset, use_vertical=False):
         label = None
         if batch.shape[0] != batch_size:
@@ -55,65 +72,6 @@ class BERTLayoutTrainer:
             inputs=batch, mask_token=3,
             pad_token=0, layout_dim=self.layout_dim)
         return batch, label
-    
-    def _make_possible_mask(self, vocab_size, pos_info, seq_len):
-        total_dim = self.layout_dim*2 + 1
-        logit_masks = []
-        offset = jnp.array([pi[0] for pi in pos_info])
-        offset = jnp.expand_dims(offset, 0)
-        asset_offset = jnp.tile(offset, (1, seq_len//total_dim))
-        for idx, pi in enumerate(pos_info):
-            logit_mask = jnp.ones((1,1,vocab_size))
-            pos_mask = jnp.zeros((1,1,pi[1]))
-            logit_mask = jax.lax.dynamic_update_slice(logit_mask, 
-                                                      pos_mask,
-                                                      (0, 0, pi[0]))
-            if idx == 0:
-                logit_mask = logit_mask.at[:,:,2].set(0)
-            logit_masks.append(logit_mask)
-        logit_masks = jnp.concatenate(logit_masks, axis=1)
-        asset_logit_masks = jnp.tile(logit_masks, (1, seq_len//total_dim, 1))
-        if seq_len % total_dim > 0:
-            asset_logit_masks = jnp.concatenate(
-                (asset_logit_masks, logit_masks[:, :(seq_len % total_dim), :]),
-                axis=1)
-            asset_offset = jnp.concatenate(
-                (asset_offset, offset[:, :(seq_len % total_dim)]), axis=1)
-        return asset_logit_masks, asset_offset
-    
-    def _compute_weighted_cross_entropy(self,
-                                        logits,
-                                        targets,
-                                        mask=None,
-                                        logit_mask=None,
-                                        label_smoothing=0.0):
-        #mask out impossible tokens
-        if logit_mask is not None:
-            logits = jnp.where(logit_mask>0, 1e-7, logits)
-
-        vocab_size = logits.shape[-1]
-        confidence = 1 - label_smoothing
-        low_confidence = label_smoothing / (vocab_size-1)
-        soft_targets = common_utils.onehot(targets, vocab_size,
-                                           on_value=1.0, off_value=low_confidence)
-        loss = -jnp.sum(soft_targets * flax.linen.log_softmax(logits), axis=-1)
-        normalizing_constant = -(
-            confidence * jnp.log(confidence) +
-            (vocab_size - 1) * low_confidence * jnp.log(low_confidence + 1e-20))
-        loss = loss - normalizing_constant
-        normalizing_factor = np.prod(targets.shape)
-        if mask is not None:
-            loss = loss * mask
-            normalizing_factor = mask.sum()
-        return loss.sum() / normalizing_factor
-    
-    def _create_optimizer(self):
-        opt_def = optax.adam(
-            learning_rate=self.config.optimizer.lr,
-            b1=self.config.optimizer.beta1,
-            b2=self.config.optimizer.beta2,
-        )
-        return opt_def
     
     def create_train_state(
             self,
@@ -145,19 +103,6 @@ class BERTLayoutTrainer:
             metrics=Metrics.empty()
         )
     
-    def _load_checkpoint(self, target):
-        orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
-        checkpoint_path = Path(self.config.checkpoint_path)
-        if checkpoint_path.exists() == False:
-            raise Exception(f"{checkpoint_path} does not exits!!")
-        ckpt = orbax_checkpointer.restore(checkpoint_path, item=target)
-        return ckpt
-
-    def _save_checkpoint(self, ckpt, name):
-        orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
-        save_args = orbax_utils.save_args_from_target(ckpt)
-        orbax_checkpointer.save(self.workdir/name, ckpt, save_args=save_args, force=True)
-
     def train(self):
         #Setup Dataset and DataLoader
         train_dataset = LayoutDataset('train',
@@ -282,3 +227,131 @@ class BERTLayoutTrainer:
         state = state.replace(metrics=metrics)
         return state
     
+    def _get_dtype(self):
+        if self.config.dtype == "bfloat16":
+            return jnp.bfloat16, jnp.bfloat16
+        else:
+            return jnp.float32, jnp.float32
+    
+    def _make_possible_mask(self, vocab_size, pos_info, seq_len):
+        """Create masking for possible logits at each position.
+        
+        For example, our sequence might have the form of [c1,w1,h1,x1,y2,c2,w2, ...]. Which meant
+        that as the [c1,c2,...,c_n] position, only token corresonpind to element class are available.
+        As such, it is benefitial to mask tokens at each position to a subset of the vocabulary for
+        faster training.
+
+        Arguments
+        ---------
+        vocab_size : int
+            the number of possible vocabulary
+        pos_info : list[[int, int]]
+            start token index and the number of possible index for a type of token. For example,
+            Element's class token begin at 4 - with 4 possible tokens, and Element's width begin at 8,
+            with 32 possible tokens.The pos_info for them would be [[4,4],[8,32]] 
+        seq_len : int
+            the length of the sequence
+            
+        Returns
+        -------
+        asset_logit_masks: jnp.array
+            [1, seq_len, vocab_size] logits mask for each position
+        asset_offset: jnp.array
+            [1, seq_len] offset for each position.
+        """
+        total_dim = self.total_dim
+        logit_masks = []
+
+        offset = jnp.array([pi[0] for pi in pos_info])
+        offset = jnp.expand_dims(offset, 0)
+        # tile offset to seq_len (which should be divisible by total_dim)
+        asset_offset = jnp.tile(offset, (1, seq_len//total_dim))
+        # Create possible mask for each type of token 
+        for idx, pi in enumerate(pos_info):
+            # Create initial impossible token mask ( 0 = possible, 1 = impossible)
+            logit_mask = jnp.ones((1,1,vocab_size))
+            # Create possible tokens
+            pos_mask = jnp.zeros((1,1,pi[1]))
+            # Add posible and impossible mask together
+            logit_mask = jax.lax.dynamic_update_slice(logit_mask, 
+                                                      pos_mask,
+                                                      (0, 0, pi[0]))
+            # --> For example, at position [c1], the possible token should be [1, 1, 1, 1, 0, 0, 0, 0, 1, ...1]
+            # denoting that only token representing element class is usuable
+            if idx == 0:
+                logit_mask = logit_mask.at[:,:,2].set(0)
+            logit_masks.append(logit_mask)
+        
+        logit_masks = jnp.concatenate(logit_masks, axis=1)
+        asset_logit_masks = jnp.tile(logit_masks, (1, seq_len//total_dim, 1))
+        if seq_len % total_dim > 0:
+            asset_logit_masks = jnp.concatenate(
+                (asset_logit_masks, logit_masks[:, :(seq_len % total_dim), :]),
+                axis=1)
+            asset_offset = jnp.concatenate(
+                (asset_offset, offset[:, :(seq_len % total_dim)]), axis=1)
+        return asset_logit_masks, asset_offset
+    
+    def _compute_weighted_cross_entropy(self,
+                                        logits,
+                                        targets,
+                                        mask=None,
+                                        logit_mask=None,
+                                        label_smoothing=0.0):
+        """Negative Log-likelihood for BLT modelling
+
+        Basically log_cross_entropy(), but with special logit_mask for possible tokens
+
+        Arguments
+        ---------
+        logits : float jnp.array 
+            [batch_size, seq_len, vocab_size] model's output logits
+        targets : int jnp.array
+            [batch_size, seq_len] integer label (NOT onehot)
+        mask : int jnp.array
+            [batch_size, seq_len] Whether or not an element is replace by [MASK] token
+        logit_mask : int jnp.array
+            [batch_size, seq_len, vocab_size] mask of possible logit
+        label_smoothing : float
+            label smoothing constant. DO NOT TOUCH unless you know what you are doing.
+        """
+        #mask out impossible tokens
+        if logit_mask is not None:
+            logits = jnp.where(logit_mask>0, 1e-7, logits)
+        
+        vocab_size = logits.shape[-1]
+        confidence = 1 - label_smoothing
+        low_confidence = label_smoothing / (vocab_size-1)
+        soft_targets = common_utils.onehot(targets, vocab_size,
+                                           on_value=1.0, off_value=low_confidence)
+        loss = -jnp.sum(soft_targets * flax.linen.log_softmax(logits), axis=-1)
+        normalizing_constant = -(
+            confidence * jnp.log(confidence) +
+            (vocab_size - 1) * low_confidence * jnp.log(low_confidence + 1e-20))
+        loss = loss - normalizing_constant
+        normalizing_factor = np.prod(targets.shape)
+        if mask is not None:
+            loss = loss * mask
+            normalizing_factor = mask.sum()
+        return loss.sum() / normalizing_factor
+    
+    def _create_optimizer(self):
+        opt_def = optax.adam(
+            learning_rate=self.config.optimizer.lr,
+            b1=self.config.optimizer.beta1,
+            b2=self.config.optimizer.beta2,
+        )
+        return opt_def
+    
+    def _load_checkpoint(self, target):
+        orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
+        checkpoint_path = Path(self.config.checkpoint_path)
+        if checkpoint_path.exists() == False:
+            raise Exception(f"{checkpoint_path} does not exits!!")
+        ckpt = orbax_checkpointer.restore(checkpoint_path, item=target)
+        return ckpt
+
+    def _save_checkpoint(self, ckpt, name):
+        orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
+        save_args = orbax_utils.save_args_from_target(ckpt)
+        orbax_checkpointer.save(self.workdir/name, ckpt, save_args=save_args, force=True)
