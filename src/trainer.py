@@ -236,10 +236,10 @@ class BERTLayoutTrainer:
                 
             for metric, value in validation_state.metrics.compute().items():
                 metric_history[f'validation_{metric}'].append(value)
-            print(f"Train epoch: {epoch},"
-                  f"Loss: {metric_history['train_loss'][-1]}")
-            print(f"Test epoch: {epoch},"
-                  f"Loss: {metric_history['validation_loss'][-1]}")
+            # Log messages
+            print('Epoch {} train/val loss: {:.6f} / {:.6f}'.format(epoch,
+                                                                    metric_history['train_loss'][-1],
+                                                                    metric_history['validation_loss'][-1]))
             
             validation_loss = metric_history['validation_loss'][-1]
             if validation_loss < min_validation_loss:
