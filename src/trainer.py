@@ -210,10 +210,16 @@ class BERTLayoutTrainer:
             for batch in train_dataloader:
                 batch = attribute_random_masking(batch, mask_token=train_dataset.mask_idx,
                                                 pad_token=train_dataset.pad_idx, layout_dim=self.config.layout_dim)
-                state = self.train_step(state, batch["masked_inputs"],
-                                        batch["targets"], batch["weights"])
-                state = self.compute_metrics(state, batch["masked_inputs"],
-                                            batch["targets"], batch["weights"])
+                state = self.train_step(state = state, 
+                                        input_ids = batch["masked_inputs"],
+                                        labels = batch["targets"], 
+                                        weight_mask = batch["weights"], 
+                                        possible_mask = possible_logit)
+                state = self.compute_metrics(state = state, 
+                                             input_ids = batch["masked_inputs"],
+                                             labels = batch["targets"], 
+                                             weight_mask = batch["weights"],
+                                             possible_mask = possible_logit)
             for metric, value in state.metrics.compute().items():
                 metric_history[f'train_{metric}'].append(value)
             
@@ -222,8 +228,12 @@ class BERTLayoutTrainer:
             for batch in val_dataloader:
                 batch = attribute_random_masking(batch, mask_token=train_dataset.mask_idx,
                                                  pad_token=train_dataset.pad_idx, layout_dim=self.config.layout_dim)
-                validation_state = self.compute_metrics(validation_state, batch["masked_inputs"],
-                                                        batch["targets"], batch["weights"])
+                validation_state = self.compute_metrics(state = state, 
+                                             input_ids = batch["masked_inputs"],
+                                             labels = batch["targets"], 
+                                             weight_mask = batch["weights"],
+                                             possible_mask = possible_logit)
+                
             for metric, value in validation_state.metrics.compute().items():
                 metric_history[f'validation_{metric}'].append(value)
             print(f"Train epoch: {epoch},"

@@ -77,7 +77,7 @@ def get_magazine_config():
   config.image_size = 256
 
   # Training info
-  config.epoch = 100
+  config.epoch = 5000
   config.layout_dim = 2
   config.seed = 56175
   config.batch_size = 64
