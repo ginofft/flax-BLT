@@ -203,7 +203,7 @@ class BERTLayoutTrainer:
                     [train_dataset.offset_center_x, train_dataset.resolution_w],
                     [train_dataset.offset_center_y, train_dataset.resolution_h]]
         seq_len = train_dataset.seq_len
-        possible_logit = self._make_possible_mask(vocab_size=vocab_size, pos_info=pos_info,seq_len=seq_len)
+        possible_logit, _ = self._make_possible_mask(vocab_size=vocab_size, pos_info=pos_info,seq_len=seq_len)
         # Training / Validation Loop
         for epoch in range(start_epoch+1, self.config.epoch+1):
             # Train
