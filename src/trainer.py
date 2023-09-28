@@ -44,7 +44,7 @@ class BERTLayoutTrainer:
     create_train_state(): 
         return a FLAX's TrainState, composing of: parameters, optimizer and metrics
     train():
-        train a model and save into self.workdir. DO NOT return anything
+        train a model and save into self.workdir. DOES NOT return anything
     test(): 
         NotDocumented.
     preprocessbatch():
@@ -318,7 +318,7 @@ class BERTLayoutTrainer:
         #mask out impossible tokens
         if logit_mask is not None:
             logits = jnp.where(logit_mask>0, 1e-7, logits)
-        
+
         vocab_size = logits.shape[-1]
         confidence = 1 - label_smoothing
         low_confidence = label_smoothing / (vocab_size-1)
