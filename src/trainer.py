@@ -108,11 +108,10 @@ class BERTLayoutTrainer:
         return loss.sum() / normalizing_factor
     
     def _create_optimizer(self):
-        opt_def = optax.adamaxw(
+        opt_def = optax.adam(
             learning_rate=self.config.optimizer.lr,
             b1=self.config.optimizer.beta1,
             b2=self.config.optimizer.beta2,
-            weight_decay=self.config.optimizer.weight_decay
         )
         return opt_def
     
