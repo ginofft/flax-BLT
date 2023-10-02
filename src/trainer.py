@@ -155,7 +155,6 @@ class BERTLayoutTrainer:
         for epoch in range(start_epoch+1, self.config.epoch+1):
             # Train
             for batch in train_dataloader:
-
                 batch = attribute_random_masking(batch, mask_token=train_dataset.mask_idx,
                                                 pad_token=train_dataset.pad_idx, layout_dim=self.config.layout_dim)
                 state = self.train_step(state = state, 
@@ -206,14 +205,13 @@ class BERTLayoutTrainer:
     @partial(jit, static_argnums=(0,))
     def train_step(self,
                     state,
-                    input_ids,
-                    labels,
+                    batch,
                     weight_mask = None,
                     possible_mask = None):
         def loss_fn(params):
-            logits = state.apply_fn({'params':params}, input_ids=input_ids, labels=labels)
+            logits = state.apply_fn({'params':params}, input_ids=batch["masked_inputs"], labels=None)
             #loss = optax.softmax_cross_entropy_with_integer_labels(logits, labels)
-            loss = self._compute_weighted_cross_entropy(logits, labels, weight_mask, possible_mask)
+            loss = self._compute_weighted_cross_entropy(logits, batch["targets"], weight_mask, possible_mask)
             return loss
         grad_fn = jax.grad(loss_fn)
         grads = grad_fn(state.params)
@@ -222,14 +220,12 @@ class BERTLayoutTrainer:
     
     @partial(jit, static_argnums=(0,))
     def compute_metrics(self, state, 
-                        input_ids, 
-                        labels, 
+                        batch, 
                         weight_mask = None,
                         possible_mask = None):
-        logits = state.apply_fn({'params': state.params}, input_ids=input_ids, labels=labels)
-        loss = self._compute_weighted_cross_entropy(logits, labels, weight_mask, possible_mask)
-        metric_updates = state.metrics.single_from_model_output(
-            loss = loss)
+        logits = state.apply_fn({'params': state.params}, input_ids=batch['masked_inputs'], labels=None)
+        loss = self._compute_weighted_cross_entropy(logits, batch["targets"], weight_mask, possible_mask)
+        metric_updates = state.metrics.single_from_model_output(loss = loss)
         metrics = state.metrics.merge(metric_updates)
         state = state.replace(metrics=metrics)
         return state
