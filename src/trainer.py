@@ -158,13 +158,11 @@ class BERTLayoutTrainer:
                 batch = attribute_random_masking(batch, mask_token=train_dataset.mask_idx,
                                                 pad_token=train_dataset.pad_idx, layout_dim=self.config.layout_dim)
                 state = self.train_step(state = state, 
-                                        input_ids = batch["masked_inputs"],
-                                        labels = None, 
+                                        batch = batch,
                                         weight_mask = batch["weights"], 
                                         possible_mask = possible_logit)
                 state = self.compute_metrics(state = state, 
-                                             input_ids = batch["masked_inputs"],
-                                             labels = batch["targets"], 
+                                             batch = batch,
                                              weight_mask = batch["weights"],
                                              possible_mask = possible_logit)
             for metric, value in state.metrics.compute().items():
@@ -176,8 +174,7 @@ class BERTLayoutTrainer:
                 batch = attribute_random_masking(batch, mask_token=train_dataset.mask_idx,
                                                  pad_token=train_dataset.pad_idx, layout_dim=self.config.layout_dim)
                 validation_state = self.compute_metrics(state = state, 
-                                             input_ids = batch["masked_inputs"],
-                                             labels = batch["targets"], 
+                                             batch=batch,
                                              weight_mask = batch["weights"],
                                              possible_mask = possible_logit)
                 
@@ -204,10 +201,10 @@ class BERTLayoutTrainer:
     
     @partial(jit, static_argnums=(0,))
     def train_step(self,
-                    state,
-                    batch,
-                    weight_mask = None,
-                    possible_mask = None):
+                   state,
+                   batch,
+                   weight_mask = None,
+                   possible_mask = None):
         def loss_fn(params):
             logits = state.apply_fn({'params':params}, input_ids=batch["masked_inputs"], labels=None)
             #loss = optax.softmax_cross_entropy_with_integer_labels(logits, labels)
@@ -219,7 +216,8 @@ class BERTLayoutTrainer:
         return state
     
     @partial(jit, static_argnums=(0,))
-    def compute_metrics(self, state, 
+    def compute_metrics(self, 
+                        state, 
                         batch, 
                         weight_mask = None,
                         possible_mask = None):
