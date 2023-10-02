@@ -121,7 +121,7 @@ class BERTLayoutTrainer:
                                     shuffle=self.config.train_shuffle)
         # Setup model's state
         init_batch = jnp.ones((self.config.batch_size, train_dataset.seq_len))
-        init_label = jnp.ones((self.config.batch_size, train_dataset.seq_len))
+        init_label = jnp.ones((self.config.batch_size, 1))
         init_batch = dict(inputs=init_batch, labels=init_label)
         state = self.create_train_state(rng = self.rng, inputs = init_batch)
 
@@ -197,18 +197,53 @@ class BERTLayoutTrainer:
                 self._save_checkpoint(ckpt, f'checkpoint_epoch{epoch}')
     
     def test(self):
-        raise NotImplementedError
+        #Setup Dataset and DataLoader
+        test_dataset = LayoutDataset('test',
+                                      self.config.dataset_path+'/test.json',
+                                      config=self.config.dataset)
+        collator = PaddingCollator(pad_token_id=test_dataset.pad_idx, seq_len=test_dataset.seq_len)
+        test_dataloader = DataLoader(test_dataset, batch_size=self.config.eval_batch_size,
+                                    collate_fn=collator.collate_padding,
+                                    shuffle=self.config.train_shuffle)
+        # Setup model's state
+        init_batch = jnp.ones((self.config.batch_size, test_dataset.seq_len))
+        init_label = jnp.ones((self.config.batch_size, 1))
+        init_batch = dict(inputs=init_batch, labels=init_label)
+        state =  self.create_train_state(rng = self.rng, inputs = init_batch)
+
+        if self.config.checkpoint_path is not None:
+            target = {'model':state, 'metric_history':dict, 'min_loss': float, 'epoch':int}
+            ckpt = self._load_checkpoint(target)
+            state = ckpt['model']
+
+            metric_history = ckpt['metric_history']
+            min_validation_loss = ckpt['min_loss']
+            start_epoch = ckpt['epoch']
+
+            print("Loaded epoch {} - Loss: {:.6f}".format(start_epoch, min_validation_loss))
+        else:
+            raise TypeError("Please provide a checkpoint path!!")
+        
+        # Get possible logit for each position
+        vocab_size = test_dataset.get_vocab_size()
+        pos_info = [[test_dataset.offset_class, test_dataset.number_classes], 
+                    [test_dataset.offset_width, test_dataset.resolution_w],
+                    [test_dataset.offset_height, test_dataset.resolution_h],
+                    [test_dataset.offset_center_x, test_dataset.resolution_w],
+                    [test_dataset.offset_center_y, test_dataset.resolution_h]]
+        seq_len = test_dataset.seq_len
+        possible_logit, _ = self._make_possible_mask(vocab_size=vocab_size, pos_info=pos_info,seq_len=seq_len)
+        
     
     @partial(jit, static_argnums=(0,))
     def train_step(self,
                    state,
                    batch,
-                   weight_mask = None,
                    possible_mask = None):
         def loss_fn(params):
             logits = state.apply_fn({'params':params}, input_ids=batch["masked_inputs"], labels=None)
             #loss = optax.softmax_cross_entropy_with_integer_labels(logits, labels)
-            loss = self._compute_weighted_cross_entropy(logits, batch["targets"], weight_mask, possible_mask)
+            loss = self._compute_weighted_cross_entropy(logits, batch["targets"], batch["weights"], possible_mask)
             return loss
         grad_fn = jax.grad(loss_fn)
         grads = grad_fn(state.params)
@@ -219,10 +254,9 @@ class BERTLayoutTrainer:
     def compute_metrics(self, 
                         state, 
                         batch, 
-                        weight_mask = None,
                         possible_mask = None):
         logits = state.apply_fn({'params': state.params}, input_ids=batch['masked_inputs'], labels=None)
-        loss = self._compute_weighted_cross_entropy(logits, batch["targets"], weight_mask, possible_mask)
+        loss = self._compute_weighted_cross_entropy(logits, batch["targets"], batch["weights"], possible_mask)
         metric_updates = state.metrics.single_from_model_output(loss = loss)
         metrics = state.metrics.merge(metric_updates)
         state = state.replace(metrics=metrics)
