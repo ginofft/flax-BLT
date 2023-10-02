@@ -64,7 +64,7 @@ class BERTLayoutTrainer:
         self.layout_dim = self.config.layout_dim
         self.total_dim = self.layout_dim*2 + 1
 
-    def preprocess_batch(self, batch, batch_size, dataset, use_vertical=False):
+    def preprocess_batch(self, batch, batch_size):
         label = None
         if batch.shape[0] != batch_size:
             return None, None
@@ -133,11 +133,14 @@ class BERTLayoutTrainer:
             metric_history = ckpt['metric_history']
             min_validation_loss = ckpt['min_loss']
             start_epoch = ckpt['epoch']
+
+            print("Loaded epoch {} - Loss: {:.6f}".format(start_epoch, min_validation_loss))
         else:
             metric_history = {'train_loss': [],
                             'validation_loss': []}    
             min_validation_loss = float('inf')
             start_epoch = 0
+            print("Start training from scratch")
 
         # Get possible logit for each position
         vocab_size = train_dataset.get_vocab_size()
@@ -152,11 +155,12 @@ class BERTLayoutTrainer:
         for epoch in range(start_epoch+1, self.config.epoch+1):
             # Train
             for batch in train_dataloader:
+
                 batch = attribute_random_masking(batch, mask_token=train_dataset.mask_idx,
                                                 pad_token=train_dataset.pad_idx, layout_dim=self.config.layout_dim)
                 state = self.train_step(state = state, 
                                         input_ids = batch["masked_inputs"],
-                                        labels = batch["targets"], 
+                                        labels = None, 
                                         weight_mask = batch["weights"], 
                                         possible_mask = possible_logit)
                 state = self.compute_metrics(state = state, 
