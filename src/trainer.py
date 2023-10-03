@@ -173,7 +173,7 @@ class BERTLayoutTrainer:
                                                  pad_token=train_dataset.pad_idx, layout_dim=self.config.layout_dim)
                 validation_state = self.compute_metrics(state = state, 
                                              batch=batch,
-=                                            possible_mask = possible_logit)
+                                            possible_mask = possible_logit)
                 
             for metric, value in validation_state.metrics.compute().items():
                 metric_history[f'validation_{metric}'].append(value)
