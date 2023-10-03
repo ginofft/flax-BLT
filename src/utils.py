@@ -71,6 +71,108 @@ def get_layout_iou(layout):
 		return 0
 	return overlap_area/bbox_area
 
+def get_average_iou(layout):
+	iou_values = []
+	layout = normalize_bbox(layout)
+	for i in range(len(layout)):
+		for j in range(i+1, len(layout)):
+			bbox1 = layout[i]
+			bbox2 = layout[j]
+			iou_for_pair = get_iou(bbox1, bbox2)
+			if iou_for_pair > 0:
+				iou_values.append(iou_for_pair)
+	return np.mean(iou_values) if len(iou_values) else 0.
+
+def get_iou(bb0, bb1):
+	intersection = get_intersection(bb0, bb1)
+	bb0_area = area(bb0)
+	bb1_area = area(bb1)
+	if np.isclose(bb0_area + bb1_area - intersection, 0.):
+		return 0
+	return intersection / (bb0_area + bb1_area - intersection)
+
+def get_intersection(bb0, bb1):
+	x_0, y_0, x_1, y_1 = bb0
+	u_0, v_0, u_1, v_1 = bb1
+	intersection_x_0 = max(x_0, u_0)
+	intersection_y_0 = max(y_0, v_0)
+	intersection_x_1 = min(x_1, u_1)
+	intersection_y_1 = min(y_1, v_1)
+	intersection = area(
+		[intersection_x_0, intersection_y_0, intersection_x_1, intersection_y_1]
+	)
+	return intersection
+
+def area(bbox):
+	x_0, y_0, x_1, y_1 = bbox
+	return max(0.,x_1 - x_0) * max(0., y_1 - y_0)
+
+def get_overlap_index(layout):
+	intersection_areas = []
+	layout = normalize_bbox(layout)
+	for i in range(len(layout)):
+		for j in range(i+1, len(layout)):
+			bbox1 = layout[i]
+			bbox2 = layout[j]
+
+			intersection = get_intersection(bbox1, bbox2)
+			if intersection > 0.:
+				intersection_areas.append(intersection)
+	return np.sum(intersection_areas) if intersection_areas else 0.
+
+def get_alignment_loss(layout):
+	layout = normalize_bbox(layout)
+	if len(layout) <= 1:
+		return -1
+	return get_alignment_loss_numpy(layout)
+
+def get_alignment_loss_numpy(layout):
+	a = layout
+	b = layout
+	a, b = a[None,:, None], b[:, None, None]
+	cartersian_product = np.concatenate(
+		[a + np.zeros_like(b), np.zeros_like(a) + b], axis=2)
+
+	left_correlation = left_similarity(cartersian_product)
+	center_correlation = center_similarity(cartersian_product)
+	right_correlation = right_similarity(cartersian_product)
+	correlations = np.stack(
+		[left_correlation, center_correlation, right_correlation], axis=2)
+	min_correlation = np.sum(np.min(correlations, axis = (1,2)))
+	return min_correlation
+
+def left_similarity(correlated):
+	remove_diagonal_entries_mask = np.zeros(
+		(correlated.shape[0], correlated.shape[0]))
+	np.fill_diagonal(remove_diagonal_entries_mask, np.inf)
+	correlations = np.mean(
+		np.abs(correlated[:, :, 0, :2] -  correlated[:, : , 1, :2]), axis=-1)
+	return correlations + remove_diagonal_entries_mask
+
+def right_similarity(correlated):
+	remove_diagonal_entries_mask = np.zeros(
+		(correlated.shape[0], correlated.shape[0]))
+	np.fill_diagonal(remove_diagonal_entries_mask, np.inf)
+	correlations = np.mean(
+		np.abs(correlated[:, :, 0, 2:] - correlated[:, :, 1, 2:]), axis=-1)
+	return correlations + remove_diagonal_entries_mask
+
+def center_similarity(correlated):
+	x0 = (correlated[:,:,0,0] + correlated[:,:,0,2])/2
+	y0 = (correlated[:,:,0,1] + correlated[:,:,0,3])/2
+	centroids0 = np.stack([x0,y0], axis=2)
+
+	x1 = (correlated[:,:,1,0] + correlated[:,:,1,2])/2
+	y1 = (correlated[:,:,1,1] + correlated[:,:,1,3])/2
+	centroids1 = np.stack([x1,y1], axis=2)
+
+	correlations = np.mean(np.abs(centroids0-centroids1), axis=-1)
+	remove_diagonal_entries_mask = np.zeros(
+		(correlated.shape[0], correlated.shape[0]))
+	np.fill_diagonal(remove_diagonal_entries_mask, np.inf)
+	
+	return correlations + remove_diagonal_entries_mask
+
 def attribute_random_masking(inputs, mask_token, pad_token, layout_dim):
     """Repace some token with inputs token. 
     However, for a specific layout, only token with the same semantic meaning are masked.
@@ -131,11 +233,10 @@ def attribute_random_masking(inputs, mask_token, pad_token, layout_dim):
     return dict(masked_inputs=masked_inputs, targets=targets, weights=weights)
 
 def get_magazine_config():
-  	"""Gets the default hyperparameter configuration."""
-
-  	config = ml_collections.ConfigDict()
+	"""Gets the default hyperparameter configuration."""
+	config = ml_collections.ConfigDict()
   	# Exp info
-  	config.checkpoint_path = None
+	config.checkpoint_path = None
 	config.dataset_path = "data/layoutdata/json"
 	config.vocab_size = 137
 	config.experiment = "bert_layout"
