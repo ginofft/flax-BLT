@@ -159,11 +159,9 @@ class BERTLayoutTrainer:
                                                 pad_token=train_dataset.pad_idx, layout_dim=self.config.layout_dim)
                 state = self.train_step(state = state, 
                                         batch = batch,
-                                        weight_mask = batch["weights"], 
                                         possible_mask = possible_logit)
                 state = self.compute_metrics(state = state, 
                                              batch = batch,
-                                             weight_mask = batch["weights"],
                                              possible_mask = possible_logit)
             for metric, value in state.metrics.compute().items():
                 metric_history[f'train_{metric}'].append(value)
@@ -175,8 +173,7 @@ class BERTLayoutTrainer:
                                                  pad_token=train_dataset.pad_idx, layout_dim=self.config.layout_dim)
                 validation_state = self.compute_metrics(state = state, 
                                              batch=batch,
-                                             weight_mask = batch["weights"],
-                                             possible_mask = possible_logit)
+=                                            possible_mask = possible_logit)
                 
             for metric, value in validation_state.metrics.compute().items():
                 metric_history[f'validation_{metric}'].append(value)
