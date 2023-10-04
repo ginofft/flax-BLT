@@ -78,8 +78,6 @@ class LayoutDataset:
         self.name = name
         self.resolution_w = resolution_w
         self.resolution_h = resolution_h
-        self.limit = limit
-        self.seq_len = self.config.max_length
         self._setup_vocab()
         self.data = self._convert_data_to_model_format(data)
         
@@ -93,6 +91,7 @@ class LayoutDataset:
         self.number_classes = config.NUMBER_LABELS
         self.ID_TO_LABEL = config.ID_TO_LABEL
         self.LABEL_TO_ID = config.LABEL_TO_ID_
+        self.seq_len = config.max_length
 
     def _setup_vocab(self):
         """Setup vocabularies, consists of: special tokens, class tokens, center position tokens, width and height tokens
@@ -123,7 +122,7 @@ class LayoutDataset:
         processed_entry = []
         for entries in data: 
             elements = []
-            for box in entries['elements'][:self.limit]:
+            for box in entries['elements']:
                 category_id = self.LABEL_TO_ID[box["class"]]
                 center = box["center"]
                 width = box["width"]
