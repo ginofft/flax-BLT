@@ -151,14 +151,17 @@ class BERTLayoutTrainer:
                     [train_dataset.offset_center_y, train_dataset.resolution_h]]
         seq_len = train_dataset.seq_len
         possible_logit, _ = self._make_possible_mask(vocab_size=vocab_size, pos_info=pos_info,seq_len=seq_len)
+        rng, train_rng = jax.random.split(self.rng, 2)
         # Training / Validation Loop
         for epoch in range(start_epoch+1, self.config.epoch+1):
             # Train
             for batch in train_dataloader:
+                step_rng = jax.random.fold_in(train_rng, state.step)
                 batch = attribute_random_masking(batch, mask_token=train_dataset.mask_idx,
                                                 pad_token=train_dataset.pad_idx, layout_dim=self.config.layout_dim)
                 state = _train_step(state = state, 
                                     batch = batch,
+                                    rng = step_rng,
                                     possible_mask = possible_logit)
                 state = _compute_metrics(state = state, 
                                          batch = batch,
@@ -327,9 +330,14 @@ class BERTLayoutTrainer:
 @jax.jit
 def _train_step(state,
                batch,
+               rng,
                possible_mask = None):
     def loss_fn(params):
-        logits = state.apply_fn({'params':params}, input_ids=batch["masked_inputs"], labels=None)
+        logits = state.apply_fn({'params':params}, 
+                                input_ids=batch["masked_inputs"], 
+                                labels=None, 
+                                rngs={"dropout":rng},
+                                mutable=True)
         #loss = optax.softmax_cross_entropy_with_integer_labels(logits, labels)
         loss = _compute_weighted_cross_entropy(logits, batch["targets"], batch["weights"], possible_mask)
         return loss
