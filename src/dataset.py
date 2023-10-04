@@ -123,7 +123,7 @@ class LayoutDataset:
         processed_entry = []
         for entries in data: 
             elements = []
-            for box in entries['elements']:
+            for box in entries['elements'][:self.limit]:
                 category_id = self.LABEL_TO_ID[box["class"]]
                 center = box["center"]
                 width = box["width"]
