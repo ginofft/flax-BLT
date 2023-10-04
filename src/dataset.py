@@ -47,7 +47,7 @@ class LayoutDataset:
                  add_bos = False,
                  resolution_w = DEFAULT_RESOLUTION_WIDTH,
                  resolution_h = DEFAULT_RESOLUTION_HEIGHT,
-                 limit = 22):
+                 limit = 26):
         """Creating a Layout dataset
 
         Parameters
@@ -78,6 +78,8 @@ class LayoutDataset:
         self.name = name
         self.resolution_w = resolution_w
         self.resolution_h = resolution_h
+        self.limit = limit
+        self.seq_len = self.limit*5
         self._setup_vocab()
         self.data = self._convert_data_to_model_format(data)
         
@@ -91,7 +93,6 @@ class LayoutDataset:
         self.number_classes = config.NUMBER_LABELS
         self.ID_TO_LABEL = config.ID_TO_LABEL
         self.LABEL_TO_ID = config.LABEL_TO_ID_
-        self.seq_len = config.max_length
 
     def _setup_vocab(self):
         """Setup vocabularies, consists of: special tokens, class tokens, center position tokens, width and height tokens
