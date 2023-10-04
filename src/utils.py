@@ -212,7 +212,6 @@ def attribute_random_masking(inputs, mask_token, pad_token, layout_dim):
 	lens = jnp.sum(weights, axis=-1)
 	rng, subrng = jax.random.split(rng)
 	mask_rate = 1 - jax.random.uniform(subrng, lens.shape)
-	mask_rate = jnp.clip(mask_rate, 0.2, 1.)
 
 	mask_lens = jax.lax.ceil(lens*mask_rate).astype('int32')
 	rng, subrng = jax.random.split(rng)

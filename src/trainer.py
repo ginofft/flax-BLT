@@ -352,7 +352,7 @@ class BERTLayoutTrainer:
             logits = jnp.where(logit_mask>0, -1e7, logits)
 
         vocab_size = logits.shape[-1]
-        confidence = 1 - label_smoothing
+        confidence = 1.0 - label_smoothing
         low_confidence = label_smoothing / (vocab_size-1)
         soft_targets = common_utils.onehot(targets, vocab_size,
                                            on_value=confidence, off_value=low_confidence)
