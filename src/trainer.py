@@ -157,12 +157,12 @@ class BERTLayoutTrainer:
             for batch in train_dataloader:
                 batch = attribute_random_masking(batch, mask_token=train_dataset.mask_idx,
                                                 pad_token=train_dataset.pad_idx, layout_dim=self.config.layout_dim)
-                state = self.train_step(state = state, 
-                                        batch = batch,
-                                        possible_mask = possible_logit)
-                state = self.compute_metrics(state = state, 
-                                             batch = batch,
-                                             possible_mask = possible_logit)
+                state = _train_step(state = state, 
+                                    batch = batch,
+                                    possible_mask = possible_logit)
+                state = _compute_metrics(state = state, 
+                                         batch = batch,
+                                         possible_mask = possible_logit)
             for metric, value in state.metrics.compute().items():
                 metric_history[f'train_{metric}'].append(value)
             
@@ -171,9 +171,9 @@ class BERTLayoutTrainer:
             for batch in val_dataloader:
                 batch = attribute_random_masking(batch, mask_token=train_dataset.mask_idx,
                                                  pad_token=train_dataset.pad_idx, layout_dim=self.config.layout_dim)
-                validation_state = self.compute_metrics(state = state, 
-                                            batch=batch,
-                                            possible_mask = possible_logit)
+                validation_state = _compute_metrics(state = state, 
+                                                    batch=batch,
+                                                    possible_mask = possible_logit)
                 
             for metric, value in validation_state.metrics.compute().items():
                 metric_history[f'validation_{metric}'].append(value)
@@ -231,32 +231,6 @@ class BERTLayoutTrainer:
         seq_len = test_dataset.seq_len
         possible_logit, _ = self._make_possible_mask(vocab_size=vocab_size, pos_info=pos_info,seq_len=seq_len)
         
-    
-    def train_step(self,
-                   state,
-                   batch,
-                   possible_mask = None):
-        def loss_fn(params):
-            logits = state.apply_fn({'params':params}, input_ids=batch["masked_inputs"], labels=None)
-            #loss = optax.softmax_cross_entropy_with_integer_labels(logits, labels)
-            loss = self._compute_weighted_cross_entropy(logits, batch["targets"], batch["weights"], possible_mask)
-            return loss
-        grad_fn = jax.grad(loss_fn)
-        grads = grad_fn(state.params)
-        state = state.apply_gradients(grads=grads)
-        return state
-    
-    def compute_metrics(self, 
-                        state, 
-                        batch, 
-                        possible_mask = None):
-        logits = state.apply_fn({'params': state.params}, input_ids=batch['masked_inputs'], labels=None)
-        loss = self._compute_weighted_cross_entropy(logits, batch["targets"], batch["weights"], possible_mask)
-        metric_updates = state.metrics.single_from_model_output(loss = loss)
-        metrics = state.metrics.merge(metric_updates)
-        state = state.replace(metrics=metrics)
-        return state
-    
     def _get_dtype(self):
         if self.config.dtype == "bfloat16":
             return jnp.bfloat16, jnp.bfloat16
@@ -322,49 +296,6 @@ class BERTLayoutTrainer:
                 (asset_offset, offset[:, :(seq_len % total_dim)]), axis=1)
         return asset_logit_masks, asset_offset
     
-    def _compute_weighted_cross_entropy(self,
-                                        logits,
-                                        targets,
-                                        mask=None,
-                                        logit_mask=None,
-                                        label_smoothing=0.0):
-        """Negative Log-likelihood for BLT modelling
-
-        Basically log_cross_entropy(), but with special logit_mask for possible tokens
-
-        Arguments
-        ---------
-        logits : float jnp.array 
-            [batch_size, seq_len, vocab_size] model's output logits
-        targets : int jnp.array
-            [batch_size, seq_len] integer label (NOT onehot)
-        mask : int jnp.array
-            [batch_size, seq_len] Whether or not an element is replace by [MASK] token
-        logit_mask : int jnp.array
-            [batch_size, seq_len, vocab_size] mask of possible logit
-        label_smoothing : float
-            label smoothing constant. DO NOT TOUCH unless you know what you are doing.
-        """
-        #mask out impossible tokens
-        if logit_mask is not None:
-            logits = jnp.where(logit_mask>0, -1e7, logits)
-
-        vocab_size = logits.shape[-1]
-        confidence = 1.0 - label_smoothing
-        low_confidence = label_smoothing / (vocab_size-1)
-        soft_targets = common_utils.onehot(targets, vocab_size,
-                                           on_value=confidence, off_value=low_confidence)
-        loss = -jnp.sum(soft_targets * flax.linen.log_softmax(logits), axis=-1)
-        normalizing_constant = -(
-            confidence * jnp.log(confidence) +
-            (vocab_size - 1) * low_confidence * jnp.log(low_confidence + 1e-20))
-        loss = loss - normalizing_constant
-        normalizing_factor = np.prod(targets.shape)
-        if mask is not None:
-            loss = loss * mask
-            normalizing_factor = mask.sum()
-        return loss.sum() / normalizing_factor
-    
     def _create_optimizer(self):
         opt_def = optax.adam(
             learning_rate=self.config.optimizer.lr,
@@ -392,3 +323,70 @@ class BERTLayoutTrainer:
         orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
         save_args = orbax_utils.save_args_from_target(ckpt)
         orbax_checkpointer.save(self.workdir/name, ckpt, save_args=save_args, force=True)
+
+@jax.jit
+def _train_step(state,
+               batch,
+               possible_mask = None):
+    def loss_fn(params):
+        logits = state.apply_fn({'params':params}, input_ids=batch["masked_inputs"], labels=None)
+        #loss = optax.softmax_cross_entropy_with_integer_labels(logits, labels)
+        loss = _compute_weighted_cross_entropy(logits, batch["targets"], batch["weights"], possible_mask)
+        return loss
+    grad_fn = jax.grad(loss_fn)
+    grads = grad_fn(state.params)
+    state = state.apply_gradients(grads=grads)
+    return state
+
+
+@jax.jit
+def _compute_metrics(state, 
+                    batch, 
+                    possible_mask = None):
+    logits = state.apply_fn({'params': state.params}, input_ids=batch['masked_inputs'], labels=None)
+    loss = _compute_weighted_cross_entropy(logits, batch["targets"], batch["weights"], possible_mask)
+    metric_updates = state.metrics.single_from_model_output(loss = loss)
+    metrics = state.metrics.merge(metric_updates)
+    state = state.replace(metrics=metrics)
+    return state
+
+@jax.jit
+def _compute_weighted_cross_entropy(logits,
+                                    targets,
+                                    mask=None,
+                                    logit_mask=None,
+                                    label_smoothing=0.0):
+    """Negative Log-likelihood for BLT modelling
+
+    Basically log_cross_entropy(), but with special logit_mask for possible tokens
+
+    Arguments
+    ---------
+    logits : float jnp.array 
+        [batch_size, seq_len, vocab_size] model's output logits
+    targets : int jnp.array
+        [batch_size, seq_len] integer label (NOT onehot)
+    mask : int jnp.array
+        [batch_size, seq_len] Whether or not an element is replace by [MASK] token
+    logit_mask : int jnp.array
+        [batch_size, seq_len, vocab_size] mask of possible logit
+    label_smoothing : float
+        label smoothing constant. DO NOT TOUCH unless you know what you are doing.
+    """
+    logits = jnp.where(logit_mask>0, -1e7, logits)
+
+    vocab_size = logits.shape[-1]
+    confidence = 1.0 - label_smoothing
+    low_confidence = label_smoothing / (vocab_size-1)
+    soft_targets = common_utils.onehot(targets, vocab_size,
+                                        on_value=confidence, off_value=low_confidence)
+    loss = -jnp.sum(soft_targets * flax.linen.log_softmax(logits), axis=-1)
+    normalizing_constant = -(
+        confidence * jnp.log(confidence) +
+        (vocab_size - 1) * low_confidence * jnp.log(low_confidence + 1e-20))
+    loss = loss - normalizing_constant
+    normalizing_factor = np.prod(targets.shape)
+    if mask is not None:
+        loss = loss * mask
+        normalizing_factor = mask.sum()
+    return loss.sum() / normalizing_factor
