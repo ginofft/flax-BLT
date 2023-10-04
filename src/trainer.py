@@ -375,6 +375,13 @@ class BERTLayoutTrainer:
         )
         return opt_def
     
+    def _create_lr_scheduler(self, lr=1, warmup_step=4000):
+        def step_fn(step):
+            cur_lr = lr * jnp.minimum(1.0, step/warmup_step) / jnp.sqrt(
+                jnp.maximum(step, warmup_step))
+            return jnp.asarray(cur_lr, dtype=jnp.float32)
+        return step_fn
+    
     def _load_checkpoint(self, target):
         orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
         checkpoint_path = Path(self.config.checkpoint_path)

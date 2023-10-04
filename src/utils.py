@@ -268,6 +268,7 @@ def get_magazine_config():
 
 	# Optimizer info
 	config.optimizer = ml_collections.ConfigDict()
+	config.optimizer.warmup_steps = 4000
 	config.optimizer.lr = 5e-3
 	config.optimizer.beta1 = 0.9
 	config.optimizer.beta2 = 0.98
