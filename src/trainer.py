@@ -349,13 +349,13 @@ class BERTLayoutTrainer:
         """
         #mask out impossible tokens
         if logit_mask is not None:
-            logits = jnp.where(logit_mask>0, 1e-7, logits)
+            logits = jnp.where(logit_mask>0, -1e7, logits)
 
         vocab_size = logits.shape[-1]
         confidence = 1 - label_smoothing
         low_confidence = label_smoothing / (vocab_size-1)
         soft_targets = common_utils.onehot(targets, vocab_size,
-                                           on_value=1.0, off_value=low_confidence)
+                                           on_value=confidence, off_value=low_confidence)
         loss = -jnp.sum(soft_targets * flax.linen.log_softmax(logits), axis=-1)
         normalizing_constant = -(
             confidence * jnp.log(confidence) +
