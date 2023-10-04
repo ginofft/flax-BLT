@@ -172,7 +172,7 @@ class BERTLayoutTrainer:
                 batch = attribute_random_masking(batch, mask_token=train_dataset.mask_idx,
                                                  pad_token=train_dataset.pad_idx, layout_dim=self.config.layout_dim)
                 validation_state = self.compute_metrics(state = state, 
-                                             batch=batch,
+                                            batch=batch,
                                             possible_mask = possible_logit)
                 
             for metric, value in validation_state.metrics.compute().items():
@@ -232,7 +232,6 @@ class BERTLayoutTrainer:
         possible_logit, _ = self._make_possible_mask(vocab_size=vocab_size, pos_info=pos_info,seq_len=seq_len)
         
     
-    @partial(jit, static_argnums=(0,))
     def train_step(self,
                    state,
                    batch,
@@ -247,7 +246,6 @@ class BERTLayoutTrainer:
         state = state.apply_gradients(grads=grads)
         return state
     
-    @partial(jit, static_argnums=(0,))
     def compute_metrics(self, 
                         state, 
                         batch, 
