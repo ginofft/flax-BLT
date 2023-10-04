@@ -229,6 +229,7 @@ def attribute_random_masking(inputs, mask_token, pad_token, layout_dim):
 	return dict(masked_inputs=masked_inputs, targets=targets, weights=weights)
 
 def get_magazine_config():
+
 	"""Gets the default hyperparameter configuration."""
 	config = ml_collections.ConfigDict()
   	# Exp info
@@ -294,4 +295,82 @@ def get_magazine_config():
 	config.dataset.LABEL_TO_ID_ = frozendict.frozendict(
 			{l: i for i,l in config.dataset.ID_TO_LABEL.items()})
 		
+	return config
+
+def get_publaynet_config():
+	"""Gets the default hyperparameter configuration."""
+
+	config = ml_collections.ConfigDict()
+	# Exp info
+	config.checkpoint_path = None
+	config.dataset_path = "data/publaynet"
+	config.vocab_size = 137
+	config.experiment = "bert_layout"
+	config.model_class = "bert_layout"
+	config.image_size = 256
+
+	# Training info
+	config.epoch = 5000
+	config.seed = 0
+	config.max_length = 130
+	config.batch_size = 64
+	config.train_shuffle = True
+	config.eval_pad_last_batch = False
+	config.eval_batch_size = 64
+	config.save_every_epoch = 100
+
+	# Model info
+	config.layout_dim = 2
+	config.dtype = "float32"
+	config.autoregressive = False
+	config.shuffle_buffer_size = 10
+	config.use_vae = True
+	config.share_embeddings = True
+	config.num_layers = 4
+	config.qkv_dim = 512
+	config.emb_dim = 512
+	config.mlp_dim = 2048
+	config.num_heads = 8
+	config.dropout_rate = 0.1
+	config.attention_dropout_rate = 0.3
+	config.restore_checkpoints = True
+	config.label_smoothing = 0.
+	config.sampling_method = "top-p"
+	config.use_vertical_info = False
+
+	# Optimizer info
+	config.optimizer = ml_collections.ConfigDict()
+	config.optimizer.type = "adam"
+	config.optimizer.warmup_steps = 4000
+	config.optimizer.lr = 5e-3
+	config.optimizer.beta1 = 0.9
+	config.optimizer.beta2 = 0.98
+	config.optimizer.weight_decay = 0.01
+	config.beta_rate = 1 / 20_000
+
+	# Dataset info
+	config.dataset = ml_collections.ConfigDict()
+	config.dataset.LABEL_NAMES = ("text", "title", "list", "table", "figure")
+	config.dataset.COLORS = {
+			"title": (193, 0, 0),
+			"list": (64, 44, 105),
+			"figure": (36, 234, 5),
+			"table":  (89, 130, 213),
+			"text": (253, 141, 28),
+			"background": (200, 200, 200)}
+
+	config.dataset.FRAME_WIDTH = 1050
+	config.dataset.FRAME_HEIGHT = 1485
+
+	config.dataset.ID_TO_LABEL = frozendict.frozendict({
+			0: "text",
+			1: "title",
+			2: "list",
+			3: "table",
+			4: "figure",
+		})
+	config.dataset.NUMBER_LABELS = 5
+	config.dataset.LABEL_TO_ID_ = frozendict.frozendict(
+			{l: i for i,l in config.dataset.ID_TO_LABEL.items()})
+
 	return config

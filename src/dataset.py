@@ -79,7 +79,7 @@ class LayoutDataset:
         self.resolution_w = resolution_w
         self.resolution_h = resolution_h
         self.limit = limit
-        self.seq_len = self.limit * 5
+        self.seq_len = self.config.max_length
         self._setup_vocab()
         self.data = self._convert_data_to_model_format(data)
         
