@@ -81,7 +81,7 @@ class LayoutDataset:
         self.limit = limit
         self.seq_len = self.limit*5
         self._setup_vocab()
-        self.data = self._convert_data_to_model_format(data)
+        self.key, self.data = self._convert_data_to_model_format(data)
         
     def _process_config(self, config):
         """Reading config
@@ -121,7 +121,9 @@ class LayoutDataset:
             discritzed version of original data
         """
         processed_entry = []
+        keys = []
         for entries in data: 
+            keys.append(entries["name"])
             elements = []
             for box in entries['elements'][:self.limit]:
                 category_id = self.LABEL_TO_ID[box["class"]]
@@ -140,7 +142,7 @@ class LayoutDataset:
             if self.add_bos:
                 elements = [self.bos_idx] + elements + [self.eos_idx]
             processed_entry.append(elements)
-        return processed_entry
+        return keys, processed_entry
     
     def __len__(self):
         return len(self.data)
