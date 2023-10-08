@@ -106,10 +106,10 @@ class BERTLayoutTrainer:
     def train(self):
         #Setup Dataset and DataLoader
         train_dataset = LayoutDataset('train',
-                                      self.config.dataset_path+'/train_subset.json',
+                                      self.config.dataset_path+'/train.json',
                                       config=self.config.dataset)
         val_dataset = LayoutDataset('validation',
-                                    self.config.dataset_path+'/val_subset.json',
+                                    self.config.dataset_path+'/val.json',
                                     config=self.config.dataset)
         collator = PaddingCollator(pad_token_id=train_dataset.pad_idx, seq_len=train_dataset.seq_len)
         
