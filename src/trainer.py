@@ -94,7 +94,10 @@ class BERTLayoutTrainer:
             labels=inputs["labels"],
             deterministic=False
         )["params"]
-        tx = self._create_optimizer()
+
+        lr_fn = self._create_lr_scheduler(lr = self.config.optimizer.lr, 
+                                          warmup_step=self.config.optimizer.warmup_steps)
+        tx = self._create_optimizer(lr_fn)
         
         return TrainState.create(
             apply_fn=model.apply,
@@ -267,11 +270,12 @@ class BERTLayoutTrainer:
                 (asset_offset, offset[:, :(seq_len % total_dim)]), axis=1)
         return asset_logit_masks, asset_offset
     
-    def _create_optimizer(self):
-        opt_def = optax.adam(
-            learning_rate=self.config.optimizer.lr,
+    def _create_optimizer(self, lr_fn):
+        opt_def = optax.adamw(
+            learning_rate=lr_fn,
             b1=self.config.optimizer.beta1,
             b2=self.config.optimizer.beta2,
+            weight_decay=self.config.optimizer.weight_decay
         )
         return opt_def
     
