@@ -135,9 +135,9 @@ class LayoutDataset:
                 discrete_x = round(center[0] * self.resolution_w - 1) + self.offset_center_x
                 discrete_y = round(center[1] * self.resolution_h - 1) + self.offset_center_y
                 discrete_width = round(
-                    np.clip(width * (self.resolution_w - 1), 1., self.resolution_w-1)) + self.offset_width
+                    np.clip(width * (self.resolution_w - 1), 0., self.resolution_w-1)) + self.offset_width
                 discrete_height = round(
-                    np.clip(height * (self.resolution_h - 1), 1., self.resolution_h-1)) + self.offset_height
+                    np.clip(height * (self.resolution_h - 1), 0., self.resolution_h-1)) + self.offset_height
                 elements.extend([class_id, discrete_width, discrete_height, discrete_x, discrete_y])
             if self.add_bos:
                 elements = [self.bos_idx] + elements + [self.eos_idx]
