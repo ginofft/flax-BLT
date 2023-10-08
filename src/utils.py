@@ -382,7 +382,7 @@ def get_obello_config():
 	# Exp info
 	config.checkpoint_path = None
 	config.dataset_path = "data/obello"
-	config.vocab_size = 137
+	config.vocab_size = 140
 	config.experiment = "bert_layout"
 	config.model_class = "bert_layout"
 	config.image_size = 256
