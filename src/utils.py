@@ -374,3 +374,86 @@ def get_publaynet_config():
 			{l: i for i,l in config.dataset.ID_TO_LABEL.items()})
 
 	return config
+
+def get_obello_config():
+	"""Gets the default hyperparameter configuration."""
+
+	config = ml_collections.ConfigDict()
+	# Exp info
+	config.checkpoint_path = None
+	config.dataset_path = "data/obello"
+	config.vocab_size = 137
+	config.experiment = "bert_layout"
+	config.model_class = "bert_layout"
+	config.image_size = 256
+
+	# Training info
+	config.epoch = 5000
+	config.seed = 0
+	config.max_length = 130
+	config.batch_size = 64
+	config.train_shuffle = True
+	config.eval_pad_last_batch = False
+	config.eval_batch_size = 64
+	config.save_every_epoch = 100
+
+	# Model info
+	config.layout_dim = 2
+	config.dtype = "float32"
+	config.autoregressive = False
+	config.shuffle_buffer_size = 10
+	config.use_vae = True
+	config.share_embeddings = True
+	config.num_layers = 4
+	config.qkv_dim = 512
+	config.emb_dim = 512
+	config.mlp_dim = 2048
+	config.num_heads = 8
+	config.dropout_rate = 0.1
+	config.attention_dropout_rate = 0.3
+	config.restore_checkpoints = True
+	config.label_smoothing = 0.
+	config.sampling_method = "top-p"
+	config.use_vertical_info = False
+
+	# Optimizer info
+	config.optimizer = ml_collections.ConfigDict()
+	config.optimizer.type = "adam"
+	config.optimizer.warmup_steps = 4000
+	config.optimizer.lr = 5e-3
+	config.optimizer.beta1 = 0.9
+	config.optimizer.beta2 = 0.98
+	config.optimizer.weight_decay = 0.01
+	config.beta_rate = 1 / 20_000
+
+	# Dataset info
+	config.dataset = ml_collections.ConfigDict()
+	config.dataset.LABEL_NAMES = ('Headline', 'Body', 'Logo', 'Image', 'CTA', 'button', 'text_in_shape', 'shape')
+	config.dataset.COLORS = {
+			'Headline' : (193, 0, 0),
+			'Body' : (0, 193, 0),
+			'Logo' : (0, 0, 193),
+			'Image': (128, 128, 0),
+			'CTA': (0, 128, 128),
+			'button': (128, 0, 128),
+			'text_in_shape' : (64, 128, 0),
+			'shape' : (128, 0, 64) 
+			}
+
+	config.dataset.FRAME_WIDTH = 1050
+	config.dataset.FRAME_HEIGHT = 1485
+
+	config.dataset.ID_TO_LABEL = frozendict.frozendict({
+			0:'Headline',
+			1:'Body',
+			2:'Logo',
+			3:'Image',
+			4:'CTA',
+			5:'button',
+			6:'text_in_shape',
+			7:'shape',
+		})
+	config.dataset.NUMBER_LABELS = 8
+	config.dataset.LABEL_TO_ID_ = frozendict.frozendict(
+			{l: i for i,l in config.dataset.ID_TO_LABEL.items()})
+	return config
