@@ -170,9 +170,9 @@ class BERTLayoutTrainer:
                                          possible_mask = possible_logit)
             for metric, value in state.metrics.compute().items():
                 metric_history[f'train_{metric}'].append(value)
+            state = state.replace(metrics=state.metrics.empty())
             
             #Validate
-            validation_state = state
             for batch in val_dataloader:
                 batch = attribute_random_masking(batch, mask_token=train_dataset.mask_idx,
                                                  pad_token=train_dataset.pad_idx, layout_dim=self.config.layout_dim)
@@ -182,6 +182,7 @@ class BERTLayoutTrainer:
                 
             for metric, value in validation_state.metrics.compute().items():
                 metric_history[f'validation_{metric}'].append(value)
+            state = state.replace(metrics=state.metrics.empty())
             # Log messages
             print('Epoch {} train/val loss: {:.6f} / {:.6f}'.format(epoch,
                                                                     metric_history['train_loss'][-1],
