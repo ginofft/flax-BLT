@@ -325,8 +325,8 @@ class BERTLayoutTrainer:
                                                       (0, 0, pi[0]))
             # --> For example, at position [c1], the possible token should be [1, 1, 1, 1, 0, 0, 0, 0, 1, ...1]
             # denoting that only token representing element class is usuable
-            if idx == 0:
-                logit_mask = logit_mask.at[:,:,2].set(0)
+            # if idx == 0:
+            #     logit_mask = logit_mask.at[:,:,2].set(0)
             logit_masks.append(logit_mask)
         
         logit_masks = jnp.concatenate(logit_masks, axis=1)
