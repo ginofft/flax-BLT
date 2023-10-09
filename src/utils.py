@@ -212,7 +212,7 @@ def get_obello_config():
 	config = ml_collections.ConfigDict()
 	# Exp info
 	config.checkpoint_path = None
-	config.dataset_path = "data/obello"
+	config.dataset_path = "data/obello/all"
 	config.vocab_size = 140
 	config.experiment = "bert_layout"
 	config.model_class = "bert_layout"
