@@ -71,7 +71,7 @@ def get_magazine_config():
 	config.image_size = 256
 
 	# Training info
-	config.epoch = 5000
+	config.epoch = 500
 	config.layout_dim = 2
 	config.seed = 56175
 	config.batch_size = 64
@@ -139,7 +139,7 @@ def get_publaynet_config():
 	config.image_size = 256
 
 	# Training info
-	config.epoch = 5000
+	config.epoch = 500
 	config.seed = 0
 	config.max_length = 130
 	config.batch_size = 64
@@ -216,7 +216,7 @@ def get_obello_config():
 	config.image_size = 256
 
 	# Training info
-	config.epoch = 5000
+	config.epoch = 500
 	config.seed = 0
 	config.max_length = 130
 	config.batch_size = 64
