@@ -76,9 +76,10 @@ class BERTLayoutTrainer:
     def create_train_state(
             self,
             rng,
-            inputs):
+            inputs,
+            vocab_size):
         model = BLT(use_vertical=self.config.use_vertical_info,
-                    vocab_size=self.config.vocab_size,
+                    vocab_size=vocab_size,
                     hidden_size=self.config.qkv_dim,
                     num_hidden_layers=self.config.num_layers,
                     num_attention_heads=self.config.num_heads,
@@ -128,7 +129,8 @@ class BERTLayoutTrainer:
         init_batch = jnp.ones((self.config.batch_size, train_dataset.seq_len))
         init_label = jnp.ones((self.config.batch_size, 1))
         init_batch = dict(inputs=init_batch, labels=init_label)
-        state = self.create_train_state(rng = self.rng, inputs = init_batch)
+        vocab_size = train_dataset.get_vocab_size()
+        state = self.create_train_state(rng = self.rng, inputs = init_batch, vocab_size=vocab_size)
 
         if self.config.checkpoint_path is not None:
             target = {'model':state, 'metric_history':dict, 'min_loss': float, 'epoch':int}
@@ -148,7 +150,6 @@ class BERTLayoutTrainer:
             print("Start training from scratch")
 
         # Get possible logit for each position
-        vocab_size = train_dataset.get_vocab_size()
         pos_info = [[train_dataset.offset_class, train_dataset.number_classes], 
                     [train_dataset.offset_width, train_dataset.resolution_w],
                     [train_dataset.offset_height, train_dataset.resolution_h],

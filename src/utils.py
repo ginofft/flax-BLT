@@ -66,7 +66,6 @@ def get_magazine_config():
   	# Exp info
 	config.checkpoint_path = None
 	config.dataset_path = "data/layoutdata/json"
-	config.vocab_size = 137
 	config.experiment = "bert_layout"
 	config.model_class = "bert_layout"
 	config.image_size = 256
@@ -135,7 +134,6 @@ def get_publaynet_config():
 	# Exp info
 	config.checkpoint_path = None
 	config.dataset_path = "data/publaynet"
-	config.vocab_size = 137
 	config.experiment = "bert_layout"
 	config.model_class = "bert_layout"
 	config.image_size = 256
@@ -213,7 +211,6 @@ def get_obello_config():
 	# Exp info
 	config.checkpoint_path = None
 	config.dataset_path = "data/obello/all"
-	config.vocab_size = 140
 	config.experiment = "bert_layout"
 	config.model_class = "bert_layout"
 	config.image_size = 256

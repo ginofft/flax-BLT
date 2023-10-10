@@ -132,8 +132,8 @@ class LayoutDataset:
                 height = box["height"]
 
                 class_id = category_id + self.offset_class
-                discrete_x = round(center[0] * self.resolution_w - 1) + self.offset_center_x
-                discrete_y = round(center[1] * self.resolution_h - 1) + self.offset_center_y
+                discrete_x = round(center[0] * (self.resolution_w - 1)) + self.offset_center_x
+                discrete_y = round(center[1] * (self.resolution_h - 1)) + self.offset_center_y
                 discrete_width = round(
                     np.clip(width * (self.resolution_w - 1), 1., self.resolution_w-1)) + self.offset_width
                 discrete_height = round(
