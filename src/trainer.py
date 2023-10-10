@@ -226,7 +226,7 @@ class BERTLayoutTrainer:
                          state, 
                          batch, 
                          possible_mask = None):
-        logits = state.apply_fn({'params': state.params}, input_ids=batch['masked_inputs'], labels=None)
+        logits = state.apply_fn({'params': state.params}, input_ids=batch['masked_inputs'], labels=None, deterministic=True)
         loss = self._compute_weighted_cross_entropy(logits, batch["targets"], batch["weights"], possible_mask)
         metric_updates = state.metrics.single_from_model_output(loss = loss)
         metrics = state.metrics.merge(metric_updates)
