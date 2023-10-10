@@ -146,7 +146,7 @@ def get_publaynet_config():
 	config.train_shuffle = True
 	config.eval_pad_last_batch = False
 	config.eval_batch_size = 64
-	config.save_every_epoch = 100
+	config.save_every_epoch = 25
 
 	# Model info
 	config.layout_dim = 2
@@ -223,7 +223,7 @@ def get_obello_config():
 	config.train_shuffle = True
 	config.eval_pad_last_batch = False
 	config.eval_batch_size = 64
-	config.save_every_epoch = 100
+	config.save_every_epoch = 25
 
 	# Model info
 	config.layout_dim = 2
