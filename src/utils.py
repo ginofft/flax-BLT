@@ -4,6 +4,19 @@ import ml_collections
 import frozendict
 
 import functools
+
+def is_notebook():
+    try:
+        from IPython import get_ipython
+
+        if "IPKernelApp" not in get_ipython().config:  # pragma: no cover
+            raise ImportError("console")
+            return False
+    except:
+        return False
+    else:  # pragma: no cover
+        return True
+
 def attribute_random_masking(inputs, mask_token, pad_token, layout_dim):
 	"""Repace some token with [mask] token. 
 	However, for a specific layout, only token with the same semantic meaning are masked.

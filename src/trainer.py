@@ -7,6 +7,7 @@ import optax
 import orbax
 from clu import metrics
 from torch.utils.data import DataLoader
+from livelossplot import PlotLosses
 import numpy as np
 
 from functools import partial
@@ -15,7 +16,7 @@ from pathlib import Path
 
 from .dataset import LayoutDataset, PaddingCollator
 from .models.biodirectional_layout import BLT
-from .utils import attribute_random_masking
+from .utils import attribute_random_masking, is_notebook
 
 @flax.struct.dataclass
 class Metrics(metrics.Collection):
@@ -108,6 +109,11 @@ class BERTLayoutTrainer:
         )
     
     def train(self):
+        if is_notebook():
+            liveplot = PlotLosses()
+        else:
+            liveplot = None
+
         #Setup Dataset and DataLoader
         train_dataset = LayoutDataset('train',
                                       self.config.dataset_path+'/train.json',
@@ -157,7 +163,7 @@ class BERTLayoutTrainer:
                     [train_dataset.offset_center_y, train_dataset.resolution_h]]
         seq_len = train_dataset.seq_len
         possible_logit, _ = self._make_possible_mask(vocab_size=vocab_size, pos_info=pos_info,seq_len=seq_len)
-        rng, train_rng = jax.random.split(self.rng, 2)
+        self.rng, train_rng = jax.random.split(self.rng, 2)
         # Training / Validation Loop
         for epoch in range(start_epoch+1, self.config.epoch+1):
             # Train
@@ -187,10 +193,18 @@ class BERTLayoutTrainer:
             for metric, value in validation_state.metrics.compute().items():
                 metric_history[f'validation_{metric}'].append(value)
             state = state.replace(metrics=state.metrics.empty())
+            
             # Log messages
-            print('Epoch {} train/val loss: {:.6f} / {:.6f}'.format(epoch,
-                                                                    metric_history['train_loss'][-1],
-                                                                    metric_history['validation_loss'][-1]))
+            logs = {}
+            logs["train_loss"] = metric_history["train_loss"][-1]
+            logs["validation_loss"] = metric_history["validation_loss"][-1]
+            if liveplot:
+                liveplot.update(logs)
+                liveplot.send()
+            else:
+                print('Epoch {} train/val loss: {:.6f} / {:.6f}'.format(epoch,
+                                                                        logs['train_loss'],
+                                                                        logs['validation_loss']))
             
             validation_loss = metric_history['validation_loss'][-1]
             if validation_loss < min_validation_loss:
