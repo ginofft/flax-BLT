@@ -120,11 +120,11 @@ class BERTLayoutTrainer:
         train_dataloader = DataLoader(train_dataset, batch_size=self.config.batch_size,
                                       collate_fn=collator.collate_padding,
                                       shuffle=self.config.train_shuffle,
-                                      drop_last=True)
+                                      drop_last=False)
         val_dataloader = DataLoader(val_dataset, batch_size=self.config.eval_batch_size,
                                     collate_fn=collator.collate_padding,
                                     shuffle=self.config.train_shuffle,
-                                    drop_last=True)
+                                    drop_last=False)
         # Setup model's state
         init_batch = jnp.ones((self.config.batch_size, train_dataset.seq_len))
         init_label = jnp.ones((self.config.batch_size, 1))

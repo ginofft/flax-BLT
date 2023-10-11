@@ -237,8 +237,8 @@ def get_obello_config():
 	config.emb_dim = 512
 	config.mlp_dim = 2048
 	config.num_heads = 8
-	config.dropout_rate = 0.4
-	config.attention_dropout_rate = 0.5
+	config.dropout_rate = 0.1
+	config.attention_dropout_rate = 0.3
 	config.restore_checkpoints = True
 	config.label_smoothing = 0.
 	config.sampling_method = "top-p"
