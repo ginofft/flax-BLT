@@ -149,8 +149,8 @@ class BERTLayoutTrainer:
 
             print("Loaded epoch {} - Loss: {:.6f}".format(start_epoch, min_validation_loss))
         else:
-            metric_history = {'train_loss': [],
-                            'validation_loss': []}    
+            metric_history = {'loss': [],
+                            'val_loss': []}    
             min_validation_loss = float('inf')
             start_epoch = 0
             print("Start training from scratch")
@@ -196,17 +196,17 @@ class BERTLayoutTrainer:
             
             # Log messages
             logs = {}
-            logs["train_loss"] = metric_history["train_loss"][-1]
-            logs["validation_loss"] = metric_history["validation_loss"][-1]
+            logs["loss"] = metric_history["loss"][-1]
+            logs["val_loss"] = metric_history["val_loss"][-1]
             if liveplot:
                 liveplot.update(logs)
                 liveplot.send()
             else:
                 print('Epoch {} train/val loss: {:.6f} / {:.6f}'.format(epoch,
-                                                                        logs['train_loss'],
-                                                                        logs['validation_loss']))
+                                                                        logs['loss'],
+                                                                        logs['val_loss']))
             
-            validation_loss = metric_history['validation_loss'][-1]
+            validation_loss = metric_history['val_loss'][-1]
             if validation_loss < min_validation_loss:
                 min_validation_loss = validation_loss
                 ckpt = {'model': state, 'epoch':epoch, 
