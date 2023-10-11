@@ -237,8 +237,8 @@ def get_obello_config():
 	config.emb_dim = 512
 	config.mlp_dim = 2048
 	config.num_heads = 8
-	config.dropout_rate = 0.1
-	config.attention_dropout_rate = 0.3
+	config.dropout_rate = 0.4
+	config.attention_dropout_rate = 0.5
 	config.restore_checkpoints = True
 	config.label_smoothing = 0.
 	config.sampling_method = "top-p"
@@ -265,7 +265,8 @@ def get_obello_config():
 			'CTA': (0, 128, 128),
 			'button': (128, 0, 128),
 			'text_in_shape' : (64, 128, 0),
-			'shape' : (128, 0, 64) 
+			'shape' : (128, 0, 64),
+			'background': (200,200,200)
 			}
 
 	config.dataset.FRAME_WIDTH = 1050
