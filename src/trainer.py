@@ -216,6 +216,7 @@ class BERTLayoutTrainer:
                 ckpt = {'model': state, 'epoch':epoch, 
                         'metric_history': metric_history, 'min_loss': min_validation_loss}
                 self._save_checkpoint(ckpt, f'checkpoint_epoch{epoch}')
+        return min_validation_loss
     
     def test(self):
         raise NotImplementedError
