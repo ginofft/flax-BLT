@@ -179,7 +179,7 @@ class BERTLayoutTrainer:
                                               batch = batch,
                                               possible_mask = possible_logit)
             for metric, value in state.metrics.compute().items():
-                metric_history[f'train_{metric}'].append(value)
+                metric_history['loss'].append(value)
             state = state.replace(metrics=state.metrics.empty())
             
             #Validate
@@ -191,7 +191,7 @@ class BERTLayoutTrainer:
                                                          possible_mask = possible_logit)
                 
             for metric, value in validation_state.metrics.compute().items():
-                metric_history[f'validation_{metric}'].append(value)
+                metric_history['val_loss'].append(value)
             state = state.replace(metrics=state.metrics.empty())
             
             # Log messages
