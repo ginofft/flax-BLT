@@ -85,6 +85,8 @@ class BERTLayoutTrainer:
                     num_hidden_layers=self.config.num_layers,
                     num_attention_heads=self.config.num_heads,
                     intermediate_size=self.config.mlp_dim,
+                    hidden_dropout_prob=self.config.dropout_rate,
+                    attention_dropout_prob=self.config.attention_dropout_rate,
                     pad_token_id=0,
                     layout_dim=self.config.layout_dim)
         param_rng, dropout_rng, rng = jax.random.split(rng, 3)
