@@ -91,7 +91,7 @@ def get_magazine_config():
 	config.train_shuffle = True
 	config.eval_pad_last_batch = False
 	config.eval_batch_size = 64
-	config.save_every_epoch = 25
+	config.save_every_epoch = 50
 
 	# Model info
 	config.dtype = "float32"
@@ -160,7 +160,7 @@ def get_publaynet_config():
 	config.train_shuffle = True
 	config.eval_pad_last_batch = False
 	config.eval_batch_size = 64
-	config.save_every_epoch = 25
+	config.save_every_epoch = 50
 
 	# Model info
 	config.layout_dim = 2
@@ -236,7 +236,7 @@ def get_publaynet_no_seq_config():
 	config.train_shuffle = True
 	config.eval_pad_last_batch = False
 	config.eval_batch_size = 64
-	config.save_every_epoch = 25
+	config.save_every_epoch = 50
 
 	# Model info
 	config.layout_dim = 2
@@ -311,7 +311,7 @@ def get_obello_config():
 	config.train_shuffle = True
 	config.eval_pad_last_batch = False
 	config.eval_batch_size = 64
-	config.save_every_epoch = 25
+	config.save_every_epoch = 50
 
 	# Model info
 	config.layout_dim = 2
