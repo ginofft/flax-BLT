@@ -96,6 +96,7 @@ def get_magazine_config():
 	# Model info
 	config.dtype = "float32"
 	config.autoregressive = False
+	config.sequential_embedding = True
 	config.shuffle_buffer_size = 10
 	config.use_vae = True
 	config.share_embeddings = True
@@ -165,6 +166,7 @@ def get_publaynet_config():
 	config.layout_dim = 2
 	config.dtype = "float32"
 	config.autoregressive = False
+	config.sequential_embedding = True
 	config.shuffle_buffer_size = 10
 	config.use_vae = True
 	config.share_embeddings = True
@@ -241,6 +243,7 @@ def get_obello_config():
 	config.layout_dim = 2
 	config.dtype = "float32"
 	config.autoregressive = False
+	config.sequential_embedding = True
 	config.shuffle_buffer_size = 10
 	config.use_vae = True
 	config.share_embeddings = True

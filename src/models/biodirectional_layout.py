@@ -21,6 +21,7 @@ class LayoutEmbed(linen.Module):
     hidden_dropout_prob: float
     vocab_size: int
     max_position_embeddings: int
+    asset_position_embedding: bool = True
     initializer_fn: InitializerType
     layout_dim: int
     hidden_size: Optional[int] = None
@@ -62,16 +63,20 @@ class LayoutEmbed(linen.Module):
     def __call__(self, input_ids, labels, deterministic):
         seq_length = input_ids.shape[-1]
         position_ids = jnp.arange(seq_length)[None, :]
-        #asset_ids = position_ids // (self.layout_dim * 2 + 1)
+        asset_ids = position_ids // (self.layout_dim * 2 + 1)
         asset_num = jnp.expand_dims(
             jnp.sum(input_ids != 0, axis=1) // (self.layout_dim * 2 + 1), 1)
 
         word_embeddings = self.word_embedder(input_ids)
-        # position_embeddings = self.position_embedder(position_ids)
-        # asset_embeddings = self.asset_embedder(asset_ids)
+        #position_embeddings = self.position_embedder(position_ids)
+        asset_embeddings = self.asset_embedder(asset_ids)
         asset_num_embeddings = self.asset_num_embdder(asset_num)
-        #input_embeddings = word_embeddings + asset_embeddings + asset_num_embeddings
-        input_embeddings = word_embeddings + asset_num_embeddings
+        
+        if self.asset_position_embedding:
+            input_embeddings = word_embeddings + asset_embeddings + asset_num_embeddings
+        else:
+            input_embeddings = word_embeddings + asset_num_embeddings
+        
         if labels is not None and self.use_vertical:
             labels = labels.astype('int32')
             label_emb = self.label_embedder(labels)
@@ -105,6 +110,7 @@ class BLT(linen.Module):
     initializer_range: float = 0.02
     pad_token_id: int = -1
     layout_dim: int = 2
+    asset_position_embedding: bool = True
 
     def setup(self):
         self.embedder = LayoutEmbed(
@@ -113,6 +119,7 @@ class BLT(linen.Module):
             hidden_dropout_prob=self.hidden_dropout_prob,
             vocab_size=self.vocab_size,
             max_position_embeddings=self.max_position_embeddings,
+            asset_position_embedding=self.asset_position_embedding,
             initializer_fn=simplified_bert.truncated_normal(
                 self.initializer_range),
             layout_dim=self.layout_dim)
