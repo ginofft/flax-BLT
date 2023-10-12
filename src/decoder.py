@@ -171,10 +171,10 @@ class LayoutDecoder:
         for element in layout[:no_elements]:
             color = self.color_map[self.id_to_label[element[0]]]
             center_x, center_y, width, height = element[3], element[4], element[1], element[2]
-            min_x = np.round(center_x - width/2. + 1e-4)
-            max_x = np.round(center_x + width/2. + 1e-4)
-            min_y = np.round(center_y - height/2. + 1e-4)
-            max_y = np.round(center_y + height/2. + 1e-4)
+            min_x = np.round(center_x - width/2. + 1e-7)
+            max_x = np.round(center_x + width/2. + 1e-7)
+            min_y = np.round(center_y - height/2. + 1e-7)
+            max_y = np.round(center_y + height/2. + 1e-7)
             
             min_x = round(np.clip(min_x/(self.resolution_w-1), 0., 1.) * canvas_w)
             min_y = round(np.clip(min_y/(self.resolution_h-1), 0., 1.) * canvas_h)

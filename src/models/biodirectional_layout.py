@@ -62,15 +62,16 @@ class LayoutEmbed(linen.Module):
     def __call__(self, input_ids, labels, deterministic):
         seq_length = input_ids.shape[-1]
         position_ids = jnp.arange(seq_length)[None, :]
-        asset_ids = position_ids // (self.layout_dim * 2 + 1)
+        #asset_ids = position_ids // (self.layout_dim * 2 + 1)
         asset_num = jnp.expand_dims(
             jnp.sum(input_ids != 0, axis=1) // (self.layout_dim * 2 + 1), 1)
 
         word_embeddings = self.word_embedder(input_ids)
         # position_embeddings = self.position_embedder(position_ids)
-        asset_embeddings = self.asset_embedder(asset_ids)
+        # asset_embeddings = self.asset_embedder(asset_ids)
         asset_num_embeddings = self.asset_num_embdder(asset_num)
-        input_embeddings = word_embeddings + asset_embeddings + asset_num_embeddings
+        #input_embeddings = word_embeddings + asset_embeddings + asset_num_embeddings
+        input_embeddings = word_embeddings + asset_num_embeddings
         if labels is not None and self.use_vertical:
             labels = labels.astype('int32')
             label_emb = self.label_embedder(labels)
