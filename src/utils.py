@@ -244,8 +244,8 @@ def get_publaynet_no_seq_config():
 	config.autoregressive = False
 	config.sequential_embedding = False
 	config.shuffle_buffer_size = 10
-	config.num_layers = 4
-	config.qkv_dim = 768
+	config.num_layers = 6
+	config.qkv_dim = 512
 	config.emb_dim = 512
 	config.mlp_dim = 2048
 	config.num_heads = 8
@@ -254,7 +254,7 @@ def get_publaynet_no_seq_config():
 	config.label_smoothing = 0.
 	config.sampling_method = "top-p"
 	config.use_vertical_info = False
-
+	
 	# Optimizer info
 	config.optimizer = ml_collections.ConfigDict()
 	config.optimizer.type = "adam"
