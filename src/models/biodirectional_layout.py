@@ -21,7 +21,7 @@ class LayoutEmbed(linen.Module):
     hidden_dropout_prob: float
     vocab_size: int
     max_position_embeddings: int
-    asset_position_embedding: bool = True
+    asset_position_embedding: bool
     initializer_fn: InitializerType
     layout_dim: int
     hidden_size: Optional[int] = None
