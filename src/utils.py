@@ -361,15 +361,16 @@ def get_obello_config():
 	config.dataset.FRAME_HEIGHT = 1485
 
 	config.dataset.ID_TO_LABEL = frozendict.frozendict({
-			0:'Headline',
-			1:'Body',
-			2:'Logo',
-			3:'Image',
+			0:'Image',
+			1:'Logo',
+			2:'Headline',
+			3:'shape',
 			4:'CTA',
-			5:'button',
+			5:'Body',
 			6:'text_in_shape',
-			7:'shape',
+			7:'button',
 		})
+
 	config.dataset.NUMBER_LABELS = 8
 	config.dataset.LABEL_TO_ID_ = frozendict.frozendict(
 			{l: i for i,l in config.dataset.ID_TO_LABEL.items()})
