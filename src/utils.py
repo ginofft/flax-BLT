@@ -319,9 +319,9 @@ def get_obello_config():
 	config.use_vae = True
 	config.share_embeddings = True
 	config.num_layers = 4
-	config.qkv_dim = 1024
+	config.qkv_dim = 512
 	config.mlp_dim = 1024
-	config.num_heads = 1
+	config.num_heads = 8
 	config.dropout_rate = 0.1
 	config.attention_dropout_rate = 0.3
 	config.label_smoothing = 0.
