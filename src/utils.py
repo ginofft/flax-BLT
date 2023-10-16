@@ -304,7 +304,7 @@ def get_obello_config():
 	config.image_size = 256
 
 	# Training info
-	config.epoch = 350
+	config.epoch = 500
 	config.seed = 0
 	config.max_length = 130
 	config.batch_size = 64
