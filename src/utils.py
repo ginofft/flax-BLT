@@ -102,7 +102,6 @@ def get_magazine_config():
 	config.share_embeddings = True
 	config.num_layers = 4
 	config.qkv_dim = 512
-	config.emb_dim = 512
 	config.mlp_dim = 2048
 	config.num_heads = 8
 	config.dropout_rate = 0.1
@@ -172,7 +171,6 @@ def get_publaynet_config():
 	config.share_embeddings = True
 	config.num_layers = 4
 	config.qkv_dim = 512
-	config.emb_dim = 512
 	config.mlp_dim = 2048
 	config.num_heads = 8
 	config.dropout_rate = 0.1
@@ -246,7 +244,6 @@ def get_publaynet_no_seq_config():
 	config.shuffle_buffer_size = 10
 	config.num_layers = 6
 	config.qkv_dim = 512
-	config.emb_dim = 512
 	config.mlp_dim = 2048
 	config.num_heads = 8
 	config.dropout_rate = 0.1
@@ -324,7 +321,7 @@ def get_obello_config():
 	config.num_layers = 4
 	config.qkv_dim = 256
 	config.mlp_dim = 512
-	config.num_heads = 2
+	config.num_heads = 4
 	config.dropout_rate = 0.1
 	config.attention_dropout_rate = 0.3
 	config.label_smoothing = 0.
