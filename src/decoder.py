@@ -34,8 +34,8 @@ class LayoutDecoder:
                  layout_dim,
                  id_to_label, 
                  color_map,
-                 resolution_w, 
-                 resolution_h,
+                 resolution_w = 32, 
+                 resolution_h = 32,
                  iterative_nums = np.array([3,3,3]), 
                  temperature = 1.0):
         
@@ -319,3 +319,46 @@ class LayoutDecoder:
         generated = self.decode(model = None, inputs = input, logit_masks = possible_logit)[0][-1]
         self.render(generated, offset, canvas_w=canvas_w, canvas_h=canvas_h)
         return generated
+    
+    def generate_from_layout_to_json(self, input, offset, possible_logit,
+                                     input_mask_token=-1, output_mask_token=3,
+                                     pad_token=0, canvas_w=255, canvas_h=300):
+
+        total_dim = self.layout_dim*2 + 1
+        no_element = len(input) // total_dim
+
+        seq_len = offset.shape[-1]
+        input = np.array(input)
+        offset_subset = np.array(offset[0][:len(input)])
+        input = np.where(input!=input_mask_token,
+                         input+offset_subset,
+                         output_mask_token)
+        input = np.pad(input, (0, seq_len-len(input)), constant_values=pad_token)
+        input = np.expand_dims(input, axis=0)
+        
+        generated = self.decode(model = None, inputs = input, logit_masks = possible_logit)[0][-1]
+        generated = np.where(generated!=pad_token,
+                            generated - offset[0],
+                            input_mask_token)
+        generated = np.reshape(generated, (-1, 5))     
+        ele_list = []
+        for e in generated[:no_element]:
+            ele_dict = {}
+            ele_dict["class"] = self.id_to_label[e[0]]
+            
+            center_x, center_y, width, height = e[3], e[4], e[1], e[2]
+            min_x = np.round(center_x - width/2. + 1e-4)
+            min_y = np.round(center_y - height/2. + 1e-4)
+            min_x = round(np.clip(min_x/(self.resolution_w-1), 0., 1.) * canvas_w)
+            min_y = round(np.clip(min_y/(self.resolution_h-1), 0., 1.) * canvas_h)
+            width = round(np.clip(width/(self.resolution_w-1), 0., 1.) * canvas_w)
+            height = round(np.clip(height/(self.resolution_h-1), 0., 1.) * canvas_h)
+            
+            ele_dict["x"] = min_x
+            ele_dict["y"] = min_y
+            ele_dict["width"] = width
+            ele_dict["height"] = height
+
+            ele_list.append(ele_dict)
+
+        return ele_list
