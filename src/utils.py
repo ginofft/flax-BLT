@@ -1,5 +1,6 @@
 import jax
 import jax.numpy as jnp
+import numpy as np
 import ml_collections
 import frozendict
 
@@ -16,6 +17,42 @@ def is_notebook():
         return False
     else:  # pragma: no cover
         return True
+    
+def convert_json_to_model_input(layout_json, id_to_label, 
+                                resolution_w, resolution_h, 
+                                mask_token=-1):
+	label_to_id = {l: i for i,l in id_to_label.items()}
+	canvas_w = layout_json["width"]
+	canvas_h = layout_json["height"]
+	input = []
+	for e in layout_json["elements"]:
+		element_input = [-1,-1,-1,-1,-1]
+		if e["class"]:
+			class_idx = label_to_id[e["class"]]
+			element_input[0] = class_idx
+		center_x, center_y = e["center_x"], e["center_y"]
+		width, height = e["width"], e["height"]
+		if center_x:
+			center_x = center_x / canvas_w
+			discrete_x = round(center_x * (resolution_w - 1))
+			element_input[3] = discrete_x
+		if center_y:
+			center_y = center_y / canvas_h
+			discrete_y = round(center_y * (resolution_h - 1))
+			element_input[4] = discrete_y
+		if width:
+			width = width / canvas_w
+			discrete_width = round(
+				np.clip(width * (resolution_w - 1), 1., resolution_w-1))
+			element_input[1] = discrete_width
+		if height:
+			height = height / canvas_h
+			discrete_height = round(
+				np.clip(height * (resolution_h - 1), 1., resolution_h-1))
+			element_input[2] = discrete_height
+		input.extend(element_input)
+	return input
+    
 
 def attribute_random_masking(inputs, mask_token, pad_token, layout_dim):
 	"""Repace some token with [mask] token. 
