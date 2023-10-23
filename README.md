@@ -15,7 +15,7 @@ I'm planning to keep this updated and implement a Pytorch version, PRs are alway
 # Changes in this implementation
 - Make use of newer implementation of Jax, Jaxlib and Flax
 - Make use of orbax_checkpoint and optax
-- Fix attribute_random_masking() function.
+- Fix `attribute_random_masking()` function.
 - Remove some uncessary bits.
 
 # Quick start
@@ -150,3 +150,8 @@ generated = seq[index][-1]
 mask = batch["weights"][index]
 decoder.render_two_layouts(true_layout, generated, mask, offset)
 ```
+
+# Notes
+- As FLAX is still an **experimental** framework. Settings up framework might fails as out-dated version of FLAX might be remove off the internet.
+- This repo does not contain **parallel** training. As I used Google Colab GPU instance, multi GPU support will be added if there is enough requests. 
+- BLT work on the format of `[class, width, height, center_x, center_y]`. I might switch it to `[class, width, height, x, y]` where `x` and `y` are the coordinate of the top-left corner. This would be better for downstream task and more compatable with other dataset.
