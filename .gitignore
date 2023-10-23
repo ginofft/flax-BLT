@@ -1,6 +1,7 @@
 playground.ipynb
 data/images/**
 data/layoutdata/renders/**
+data/obello
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
