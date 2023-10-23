@@ -28,6 +28,43 @@ def state_init(masked_batch, rng, total_iteration_num):
     )
 
 class LayoutDecoder:
+    """This class provide a Decoder for Biodirectional Layout Transformer.
+    Used to decode layout, render during development and generate layout in Tokenized and Json format.
+
+    Attributes
+    --------
+    vocab_size : int
+        number of vocabulary (possible token)
+    seq_len : int
+        maximum length of each layout
+    layout_dim : int
+        The dimension of the layout. Mostly 2 (2D) can be 3 (3D)
+    iterative_nums : np.array 
+        A 3 element array, denoting the number of decoding iterative for [class, size, center_position]
+    temperature : float
+        How much variation is available in the decoding procedure. DON'T TOUCH unless you know what you are doing.
+    id_to_label : frozendict
+        A dictionaray {index : class_name} storing class in numerical form, and their respective class name
+    color_map : dict
+        A dictionary {class_name : RGB Array} storing the color of a respective class
+    resolution_w : int
+        width tokenization resolution.
+    resolution_h : int
+        height tokenization resolution
+
+    Methods
+    -------
+    decode() -> jax.Array:
+        return a [batch_size, no. decoding iteration, seq_len] storing the decoded layouts.
+    render() -> None:
+        Side Effect - render out a PIL image of the layout
+    render_two_layout -> None:
+        Side Effect - render out a PIL image containing two layout. Mainly used to compare ground truth and generated layout
+    generate_from_layout -> jax.Array:
+        Return a Tokenized generated layout from a Pre-Tokenized input layout.
+    generate_from_layout_to_json -> dict:
+        Return a json ready dictionary from a Pre-tokenized inptu layout.
+    """
     def __init__(self, 
                  vocab_size, 
                  seq_len, 
@@ -38,7 +75,6 @@ class LayoutDecoder:
                  resolution_h = 32,
                  iterative_nums = np.array([3,3,3]), 
                  temperature = 1.0):
-        
         self.vocab_size = vocab_size
         self.seq_len = seq_len
         self.layout_dim = layout_dim

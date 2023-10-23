@@ -39,16 +39,20 @@ class BERTLayoutTrainer:
         The dimension of the layout. Usually 2 - meaning 2D.
     rng : Union[Array, PNGKeyArray]
         JAX's pseduorandom random number generator.
+    layout_dim : int
+        The dimensionality of the Layout - usually 2 (2d) but can be 3(3d)
+    total_dim : int
+        The no. dimension of a layout's element.
     
     Methods
     -------
-    create_train_state(): 
+    create_train_state() -> TrainState: 
         return a FLAX's TrainState, composing of: parameters, optimizer and metrics
-    train():
+    train() -> None:
         train a model and save into self.workdir. DOES NOT return anything
-    test(): 
+    test() -> None: 
         NotDocumented.
-    preprocessbatch():
+    preprocess_batch() -> tuple:
         process batch to model's input format. Mainly used to create [MASK] tokens.
     """
 
