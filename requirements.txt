@@ -4,7 +4,7 @@ frozendict==2.3.8
 jax==0.4.14
 jaxlib==0.4.14
 ml_collections==0.1.1
-numpy
+numpy==1.25.2
 optax==0.1.7
 Pillow==10.0.1
 torch==2.0.1
