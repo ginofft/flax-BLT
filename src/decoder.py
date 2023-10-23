@@ -343,7 +343,8 @@ class LayoutDecoder:
 
     def generate_from_layout(self, input, offset, possible_logit,
                              input_mask_token=-1, output_mask_token=3, 
-                             pad_token=0, canvas_w=255, canvas_h=300):
+                             pad_token=0, canvas_w=255, canvas_h=300,
+                             rng=jax.random.PRNGKey(236)):
         seq_len = offset.shape[-1]
         input = np.array(input)
         offset_subset = np.array(offset[0][:len(input)])
@@ -352,7 +353,7 @@ class LayoutDecoder:
                          output_mask_token)
         input = np.pad(input, (0, seq_len-len(input)), constant_values=pad_token)
         input = np.expand_dims(input, axis=0)
-        generated = self.decode(model = None, inputs = input, logit_masks = possible_logit)[0][-1]
+        generated = self.decode(model = None, inputs = input, logit_masks = possible_logit, rng=rng)[0][-1]
         self.render(generated, offset, canvas_w=canvas_w, canvas_h=canvas_h)
         return generated
     
