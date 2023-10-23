@@ -1,4 +1,6 @@
 import numpy as np
+import functools
+import scipy
 
 def normalize_bbox(layout,
 				   resolution_w = 32,
@@ -166,3 +168,94 @@ def center_similarity(correlated):
 	np.fill_diagonal(remove_diagonal_entries_mask, np.inf)
 	
 	return correlations + remove_diagonal_entries_mask
+
+def docsim_w(b1, b2, conditional='none'):
+	if b1[0] != b2[0]:
+		return 0.
+	if conditional == 'a+s':
+		if b1[1] != b2[1] or b1[2] != b2[2]:
+			return 0.
+	alpha = min(b1[5], b2[5]) ** 0.5
+
+	delta_c = np.linalg.norm(b1[3:5] - b2[3:5])
+	delter_s = np.sum(np.abs(b1[1:3] - b2[1:3]))
+
+	w = alpha * 2**(-delta_c - 2 * delter_s)
+	return w
+
+def docsim(layout_1, layout_2,
+		   max_element_count_diff=1, conditional='none'):
+	n_asset_1 = layout_1.shape[0]
+	n_asset_2 = layout_2.shape[0]
+
+	if n_asset_1 == 0 or n_asset_2 == 0:
+		return 0.
+	distance_function = functools.partial(docsim_w, 
+									   conditional=conditional)
+	if max_element_count_diff is not None and abs(
+		n_asset_1 - n_asset_2) > max_element_count_diff:
+		return 0.
+	
+	distances = scipy.spatial.distance.cdist(
+		layout_1, layout_2, metric=distance_function)
+	assignment_row, assignment_col = scipy.optimize.linear_sum_assignment(
+		-distances)
+
+	costs = distances[assignment_row, assignment_col]
+
+	result = 1 / costs.size * costs.sum()
+	return result
+
+def preprocess_layouts_for_distance(layouts_lst):
+	normalized_layouts = []
+	for layouts in layouts_lst:
+		layouts = np.array(layouts, dtype=np.float32)
+		layouts[:,1:] = layouts[:, 1:] /32
+		areas = layouts[:, 1] * layouts[:, 2]
+		layouts = np.concatenate((layouts, areas[:,None]), axis=1)
+		normalized_layouts.append(layouts)
+	return normalized_layouts
+
+def conditional_distance(synthetic_layouts,
+						 real_layouts,
+						 conditional='a'):
+	synthetic_layouts = preprocess_layouts_for_distance(synthetic_layouts)
+	real_layouts = preprocess_layouts_for_distance(real_layouts)
+
+	distances = []
+	for s_layout, r_layout in zip(synthetic_layouts, real_layouts):
+		docsim_distance = docsim(s_layout, r_layout, conditional=conditional)
+		distances.append(docsim_distance)
+	
+	distances = np.asarray(distances)
+	return np.mean(distances)
+
+def diversity(synthetics_layouts):
+	synthetics_layouts = preprocess_layouts_for_distance(synthetics_layouts)
+	distances = []
+	for i in range(len(synthetics_layouts)):
+		for j in range(i+1, len(synthetics_layouts)):
+			docsim_distance = docsim(synthetics_layouts[i],
+									synthetics_layouts[j])
+			distances.append(docsim_distance)
+	return sum(distances) / len(distances)
+
+def unique_match(synthetic_layouts,
+				 real_layouts):
+	synthetic_layouts = preprocess_layouts_for_distance(synthetic_layouts)
+	real_layouts = preprocess_layouts_for_distance(real_layouts)
+
+	distances = []
+	for s_layout in synthetic_layouts:
+		dist_for_layout = []
+		for r_layout in real_layouts:
+			docsim_distance = docsim(
+				s_layout,
+				r_layout)
+			dist_for_layout.append(docsim_distance)
+		distances.append(dist_for_layout)
+	distances = np.asarray(distances)
+	matching_indices = np.argmax(distances, axis=-1)
+	unique_indices = np.unique(matching_indices)
+
+	return unique_indices.size
