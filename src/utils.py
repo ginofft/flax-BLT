@@ -369,7 +369,7 @@ def get_obello_config():
 	config.optimizer = ml_collections.ConfigDict()
 	config.optimizer.type = "adam"
 	config.optimizer.warmup_steps = 4000
-	config.optimizer.lr = 5e-3
+	config.optimizer.lr = 5e-3	
 	config.optimizer.beta1 = 0.9
 	config.optimizer.beta2 = 0.98
 	config.optimizer.weight_decay = 0.01
@@ -377,14 +377,15 @@ def get_obello_config():
 
 	# Dataset info
 	config.dataset = ml_collections.ConfigDict()
-	config.dataset.LABEL_NAMES = ('Headline', 'Body', 'Logo', 'Image', 'CTA', 'button', 'text_in_shape', 'shape')
+	config.dataset.LABEL_NAMES = ('Image', 'Headline', 'Body', 'Logo',
+							   	'CTA', 'shape', 'text_in_shape', 'image_circle')
 	config.dataset.COLORS = {
 			'Headline' : (193, 0, 0),
 			'Body' : (0, 193, 0),
 			'Logo' : (0, 0, 193),
 			'Image': (128, 128, 0),
 			'CTA': (0, 128, 128),
-			'button': (128, 0, 128),
+			'image_circle': (128, 0, 128),
 			'text_in_shape' : (64, 128, 0),
 			'shape' : (128, 0, 64),
 			'background': (200,200,200)
@@ -394,15 +395,15 @@ def get_obello_config():
 	config.dataset.FRAME_HEIGHT = 1485
 
 	config.dataset.ID_TO_LABEL = frozendict.frozendict({
-			0:'Image',
-			1:'Logo',
-			2:'Headline',
-			3:'shape',
-			4:'CTA',
-			5:'Body',
-			6:'text_in_shape',
-			7:'button',
-		})
+		'Image': 0,
+		'Headline': 1,
+		'Body': 2,
+		'Logo': 3,
+		'CTA': 4,
+		'shape': 5,
+		'text_in_shape': 6,
+		'image_circle': 7,
+	})
 
 	config.dataset.NUMBER_LABELS = 8
 	config.dataset.LABEL_TO_ID_ = frozendict.frozendict(
