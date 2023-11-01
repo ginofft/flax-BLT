@@ -359,8 +359,8 @@ def get_obello_config():
 	config.qkv_dim = 512
 	config.mlp_dim = 1024
 	config.num_heads = 8
-	config.dropout_rate = 0.5
-	config.attention_dropout_rate = 0.5
+	config.dropout_rate = 0.3
+	config.attention_dropout_rate = 0.3
 	config.label_smoothing = 0.
 	config.sampling_method = "top-p"
 	config.use_vertical_info = False
@@ -377,16 +377,14 @@ def get_obello_config():
 
 	# Dataset info
 	config.dataset = ml_collections.ConfigDict()
-	config.dataset.LABEL_NAMES = ('Image', 'Headline', 'Body', 'Logo',
-							   	'CTA', 'shape', 'text_in_shape', 'image_circle')
+	config.dataset.LABEL_NAMES = ('Image', 'Headline', 'Body', 
+							   	'Logo', 'CTA', 'shape')
 	config.dataset.COLORS = {
 			'Headline' : (193, 0, 0),
 			'Body' : (0, 193, 0),
 			'Logo' : (0, 0, 193),
 			'Image': (128, 128, 0),
 			'CTA': (0, 128, 128),
-			'image_circle': (128, 0, 128),
-			'text_in_shape' : (64, 128, 0),
 			'shape' : (128, 0, 64),
 			'background': (200,200,200)
 			}
@@ -397,15 +395,13 @@ def get_obello_config():
 	config.dataset.ID_TO_LABEL = frozendict.frozendict({
 		0: 'Image',
 		1: 'Headline',
-		2: 'Body',
-		3: 'Logo',
-		4: 'CTA',
-		5: 'shape',
-		6: 'text_in_shape',
-		7: 'image_circle',
+		2: 'shape',
+		3: 'Body',
+		4: 'Logo',
+		5: 'CTA',
 	})
 
-	config.dataset.NUMBER_LABELS = 8
+	config.dataset.NUMBER_LABELS = 6
 	config.dataset.LABEL_TO_ID_ = frozendict.frozendict(
 			{l: i for i,l in config.dataset.ID_TO_LABEL.items()})
 	return config

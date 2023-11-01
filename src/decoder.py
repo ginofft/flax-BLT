@@ -207,9 +207,9 @@ class LayoutDecoder:
         for element in layout[:no_elements]:
             color = self.color_map[self.id_to_label[element[0]]]
             center_x, center_y, width, height = element[3], element[4], element[1], element[2]
-            min_x = np.round(center_x - width/2. + 1e-7)
+            min_x = np.round(center_x - width/2. - 1e-7)
             max_x = np.round(center_x + width/2. + 1e-7)
-            min_y = np.round(center_y - height/2. + 1e-7)
+            min_y = np.round(center_y - height/2. - 1e-7)
             max_y = np.round(center_y + height/2. + 1e-7)
             
             min_x = round(np.clip(min_x/(self.resolution_w-1), 0., 1.) * canvas_w)
@@ -282,10 +282,10 @@ class LayoutDecoder:
         for element in ground_truth[:no_elements]:
             color = self.color_map[self.id_to_label[element[0]]]
             center_x, center_y, width, height = element[3], element[4], element[1], element[2]
-            min_x = np.round(center_x - width/2. + 1e-4)
-            max_x = np.round(center_x + width/2. + 1e-4)
-            min_y = np.round(center_y - height/2. + 1e-4)
-            max_y = np.round(center_y + height/2. + 1e-4)
+            min_x = np.round(center_x - width/2. - 1e-7)
+            max_x = np.round(center_x + width/2. + 1e-7)
+            min_y = np.round(center_y - height/2. - 1e-7)
+            max_y = np.round(center_y + height/2. + 1e-7)
             
             min_x = round(np.clip(min_x/(self.resolution_w-1), 0., 1.) * canvas_w)
             min_y = round(np.clip(min_y/(self.resolution_h-1), 0., 1.) * canvas_h)
@@ -384,12 +384,18 @@ class LayoutDecoder:
             ele_dict["class"] = self.id_to_label[e[0]]
             
             center_x, center_y, width, height = e[3], e[4], e[1], e[2]
-            min_x = np.round(center_x - width/2. + 1e-4)
-            min_y = np.round(center_y - height/2. + 1e-4)
+            min_x = np.round(center_x - width/2. - 1e-7)
+            max_x = np.round(center_x + width/2. + 1e-7)
+            min_y = np.round(center_y - height/2. - 1e-7)
+            max_y = np.round(center_y + height/2. + 1e-7)
+            
             min_x = round(np.clip(min_x/(self.resolution_w-1), 0., 1.) * canvas_w)
             min_y = round(np.clip(min_y/(self.resolution_h-1), 0., 1.) * canvas_h)
-            width = round(np.clip(width/(self.resolution_w-1), 0., 1.) * canvas_w)
-            height = round(np.clip(height/(self.resolution_h-1), 0., 1.) * canvas_h)
+            max_x = round(np.clip(max_x/(self.resolution_w-1), 0., 1.) * canvas_w)
+            max_y = round(np.clip(max_y/(self.resolution_h-1), 0., 1.) * canvas_h)
+
+            width = abs(max_x - min_x)
+            height = abs(max_y - min_y)
             
             ele_dict["x"] = min_x
             ele_dict["y"] = min_y
