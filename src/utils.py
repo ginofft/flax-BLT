@@ -18,17 +18,18 @@ def is_notebook():
     else:  # pragma: no cover
         return True
     
-def convert_json_to_model_input(layout_json, id_to_label, 
+def convert_json_to_model_input(layout_json, label_to_id,
                                 resolution_w, resolution_h, 
                                 mask_token=-1):
-	label_to_id = {l: i for i,l in id_to_label.items()}
+	sorted_elements = sorted(layout_json['elements'], key=lambda x: label_to_id.get(x['class_name'], len(label_to_id)))
+	layout_json['elements'] = sorted_elements
 	canvas_w = layout_json["width"]
 	canvas_h = layout_json["height"]
 	input = []
 	for e in layout_json["elements"]:
 		element_input = [-1,-1,-1,-1,-1]
-		if e["class"]:
-			class_idx = label_to_id[e["class"]]
+		if e["class_name"]:
+			class_idx = label_to_id[e["class_name"]]
 			element_input[0] = class_idx
 		center_x, center_y = e["center_x"], e["center_y"]
 		width, height = e["width"], e["height"]
