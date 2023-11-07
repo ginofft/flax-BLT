@@ -346,6 +346,7 @@ class LayoutDecoder:
         combined_canvas.paste(canvas2, (canvas_w, 0))
         combined_canvas.paste(legend, (2 * canvas_w, canvas_h - legend_height))
         # display(combined_canvas)
+        return combined_canvas
 
     def generate_from_layout(self, input, offset, possible_logit,
                              input_mask_token=-1, output_mask_token=3,
