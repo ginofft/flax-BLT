@@ -90,7 +90,7 @@ class LayoutDecoder:
                model,
                inputs,
                logit_masks,
-               sampling_method='topp',
+               sampling_method='greedy',
                rng=jax.random.PRNGKey(236)):
 
         if model is not None:
@@ -139,13 +139,13 @@ class LayoutDecoder:
                 sampled_ids = jnp.where(cur_attribute > 1, sampled_ids, sample_ids_2nd)
 
             def position_iteration_mask(sampled_ids):
-                sampled_ids = jnp.where(cur_ids == 3, sampled_ids, cur_ids)
+                sampled_ids = jnp.where((cur_ids == 3) & (is_position), sampled_ids, cur_ids)
                 masked_ratio = (cum_iterative_num[2] - step - 1.) / self.iterative_nums[2]
                 target_mask = (cur_ids == 3) & is_position
                 return sampled_ids, masked_ratio, target_mask
 
             def size_iteration_mask(sampled_ids):
-                sampled_ids = jnp.where((cur_ids == 3) & (~is_position), sampled_ids,
+                sampled_ids = jnp.where((cur_ids == 3) & (is_size), sampled_ids,
                                         cur_ids)
                 masked_ratio = (cum_iterative_num[1] - step - 1.) / self.iterative_nums[1]
                 target_mask = (cur_ids == 3) & is_size

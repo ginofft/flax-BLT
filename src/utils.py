@@ -269,7 +269,7 @@ def get_obello_config():
 	config.epoch = 1000
 	config.seed = 0
 	config.max_length = 130
-	config.batch_size = 32
+	config.batch_size = 64
 	config.train_shuffle = True
 	config.eval_pad_last_batch = False
 	config.eval_batch_size = 64
