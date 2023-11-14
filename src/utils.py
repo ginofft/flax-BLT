@@ -285,7 +285,7 @@ def get_obello_config():
 	config.share_embeddings = True
 	config.num_layers = 4
 	config.qkv_dim = 512
-	config.mlp_dim = 1024
+	config.mlp_dim = 2048
 	config.num_heads = 8
 	config.dropout_rate = 0.3
 	config.attention_dropout_rate = 0.3
