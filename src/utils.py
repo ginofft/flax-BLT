@@ -283,7 +283,7 @@ def get_obello_config():
 	config.shuffle_buffer_size = 10
 	config.use_vae = True
 	config.share_embeddings = True
-	config.num_layers = 4
+	config.num_layers = 2
 	config.qkv_dim = 512
 	config.mlp_dim = 512
 	config.num_heads = 8
