@@ -266,7 +266,7 @@ def get_obello_config():
 	config.image_size = 256
 
 	# Training info
-	config.epoch = 300
+	config.epoch = 700
 	config.seed = 0
 	config.max_length = 130
 	config.batch_size = 64
@@ -286,7 +286,7 @@ def get_obello_config():
 	config.num_layers = 4
 	config.qkv_dim = 256
 	config.mlp_dim = 512
-	config.num_heads = 8
+	config.num_heads = 16
 	config.dropout_rate = 0.1
 	config.attention_dropout_rate = 0.3
 	config.label_smoothing = 0.
