@@ -284,7 +284,7 @@ def get_obello_config():
 	config.use_vae = True
 	config.share_embeddings = True
 	config.num_layers = 4
-	config.qkv_dim = 256
+	config.qkv_dim = 512
 	config.mlp_dim = 512
 	config.num_heads = 16
 	config.dropout_rate = 0.1
