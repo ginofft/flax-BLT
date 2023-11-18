@@ -109,7 +109,7 @@ def attribute_random_masking(inputs, mask_token, pad_token, layout_dim):
 	weights = jnp.where(is_pad, 0, should_mask) 
 	return dict(masked_inputs=masked_inputs, targets=targets, weights=weights)
 
-def attribute_random_masking(inputs, mask_token, pad_token, layout_dim):
+def attribute_size_position_masking(inputs, mask_token, pad_token, layout_dim):
 	"""Repace some token with [mask] token. 
 	However, for a specific layout, only token with the same semantic meaning are masked.
 	We only mask position and size here.

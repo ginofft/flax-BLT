@@ -16,7 +16,7 @@ from pathlib import Path
 
 from .dataset import LayoutDataset, PaddingCollator
 from .models.biodirectional_layout import BLT
-from .utils import attribute_random_masking, is_notebook
+from .utils import attribute_random_masking, is_notebook, attribute_size_position_masking
 
 @flax.struct.dataclass
 class Metrics(metrics.Collection):
@@ -73,7 +73,7 @@ class BERTLayoutTrainer:
         label = None
         if batch.shape[0] != batch_size:
             return None, None
-        batch = attribute_random_masking(
+        batch = attribute_size_position_masking(
             inputs=batch, mask_token=3,
             pad_token=0, layout_dim=self.layout_dim)
         return batch, label
@@ -176,7 +176,7 @@ class BERTLayoutTrainer:
             # Train
             for batch in train_dataloader:
                 step_rng = jax.random.fold_in(train_rng, state.step)
-                batch = attribute_random_masking(batch, mask_token=train_dataset.mask_idx,
+                batch = attribute_size_position_masking(batch, mask_token=train_dataset.mask_idx,
                                                 pad_token=train_dataset.pad_idx, layout_dim=self.config.layout_dim)
                 state = self._train_step(state = state, 
                                     batch = batch,
@@ -191,7 +191,7 @@ class BERTLayoutTrainer:
             
             #Validate
             for batch in val_dataloader:
-                batch = attribute_random_masking(batch, mask_token=train_dataset.mask_idx,
+                batch = attribute_size_position_masking(batch, mask_token=train_dataset.mask_idx,
                                                  pad_token=train_dataset.pad_idx, layout_dim=self.config.layout_dim)
                 validation_state = self._compute_metrics(state = state, 
                                                          batch=batch,
