@@ -54,7 +54,6 @@ def convert_json_to_model_input(layout_json, label_to_id,
 		input.extend(element_input)
 	return input
     
-
 def attribute_random_masking(inputs, mask_token, pad_token, layout_dim):
 	"""Repace some token with [mask] token. 
 	However, for a specific layout, only token with the same semantic meaning are masked.
@@ -244,7 +243,7 @@ def get_publaynet_config():
 	config.image_size = 256
 
 	# Training info
-	config.epoch = 500
+	config.epoch = 700
 	config.seed = 0
 	config.max_length = 130
 	config.batch_size = 64
