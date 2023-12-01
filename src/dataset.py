@@ -3,6 +3,8 @@ import numpy as np
 from typing import Optional, Any, List, Dict
 from dataclasses import dataclass
 import torch
+from PIL import Image, ImageDraw, ImageOps
+import frozendict
 
 DEFAULT_RESOLUTION_WIDTH = 32
 DEFAULT_RESOLUTION_HEIGHT = 32
@@ -27,24 +29,21 @@ class LayoutDataset:
         special token
     offset_class : int
         beginning token of classes
-    offset_center_x : int
-        begining token of the center coordinate - in x (horizontal) dimension
-    offset_center_y : int
-        begining token of the center coordinate - in y (vertical) dimension
+    offset_x : int
+        begining token of the x coordinate (horizontal) dimension
+    offset_y : int
+        begining token of the y coordinate (horizontal) dimension
     offset_width : int
         begining token of the layout's element width
     offset_height : int
         begining token of the layout's element height 
     name : str
-        dataset name
-    add_bos : boolean
-        whether or not to add [eos] and [bos] token    
+        dataset name 
     """
     def __init__(self,
                  name,
                  path,
                  config: Optional[Any] = None,
-                 add_bos = False,
                  resolution_w = DEFAULT_RESOLUTION_WIDTH,
                  resolution_h = DEFAULT_RESOLUTION_HEIGHT,
                  limit = 26):
@@ -59,8 +58,6 @@ class LayoutDataset:
         config : Any
             A config with certain attributes (or field), which includes: 
             FRAME_WIDTH, FRAME_HEIGHT, COLORS, LABEL_NAMES, NUMBER_LABELS, ID_TO_LABEL, LABEL_TO_ID_
-        add_bos : Boolean
-            Whether or not to include [bos] and [eos] token
         resolution_w : int
             discrete resolution of width
         resolution_h : int 
@@ -74,7 +71,6 @@ class LayoutDataset:
             self._process_config(config)
         with open(path, "r") as f:
             data = json.load(f)
-        self.add_bos = add_bos
         self.name = name
         self.resolution_w = resolution_w
         self.resolution_h = resolution_h
@@ -91,19 +87,26 @@ class LayoutDataset:
         self.COLORS = config.COLORS
         self.LABEL_NAMES = config.LABEL_NAMES
         self.number_classes = config.NUMBER_LABELS
-        self.ID_TO_LABEL = config.ID_TO_LABEL
         self.LABEL_TO_ID = config.LABEL_TO_ID_
+        self.ID_TO_LABEL = config.ID_TO_LABEL
 
     def _setup_vocab(self):
-        """Setup vocabularies, consists of: special tokens, class tokens, center position tokens, width and height tokens
+        """Setup vocabularies, consists of: special tokens, class tokens, position token, width and height tokens
         """
         self.pad_idx, self.bos_idx, self.eos_idx, self.mask_idx = 0, 1, 2, 3
         self.offset_class = 4
-        self.offset_center_x = self.offset_class + self.number_classes
-        self.offset_center_y = self.offset_center_x + self.resolution_w
+        self.offset_x = self.offset_class + self.number_classes
+        self.offset_y = self.offset_x + self.resolution_w
 
-        self.offset_width = self.offset_center_y + self.resolution_h
+        self.offset_width = self.offset_y + self.resolution_h
         self.offset_height = self.offset_width + self.resolution_w
+
+        self.LABEL_TO_ID = frozendict.frozendict({
+            label: index + self.offset_class for label, index in self.LABEL_TO_ID.items()
+        })
+        self.ID_TO_LABEL = frozendict.frozendict({
+            index: label for label, index in self.LABEL_TO_ID.items()
+        })
 
     def get_vocab_size(self):
         return self.offset_class + self.number_classes + (self.resolution_w + self.resolution_h)*2
@@ -126,23 +129,51 @@ class LayoutDataset:
             keys.append(entries["name"])
             elements = []
             for box in entries['elements'][:self.limit]:
-                category_id = self.LABEL_TO_ID[box["class"]]
-                center = box["center"]
+                class_id = self.LABEL_TO_ID[box["class"]]
+                x = box['x']
+                y = box['y']
                 width = box["width"]
                 height = box["height"]
 
-                class_id = category_id + self.offset_class
-                discrete_x = round(center[0] * (self.resolution_w - 1)) + self.offset_center_x
-                discrete_y = round(center[1] * (self.resolution_h - 1)) + self.offset_center_y
+                discrete_x = round(x * (self.resolution_w - 1)) + self.offset_x
+                discrete_y = round(y * (self.resolution_h - 1)) + self.offset_y
                 discrete_width = round(
                     np.clip(width * (self.resolution_w - 1), 1., self.resolution_w-1)) + self.offset_width
                 discrete_height = round(
                     np.clip(height * (self.resolution_h - 1), 1., self.resolution_h-1)) + self.offset_height
                 elements.extend([class_id, discrete_width, discrete_height, discrete_x, discrete_y])
-            if self.add_bos:
-                elements = [self.bos_idx] + elements + [self.eos_idx]
-            processed_entry.append(elements)
+            processed_entry.append(np.array(elements))
         return keys, processed_entry
+
+    def render(self, layout):
+        img =  Image.new('RGB', (256,256), color=(255,255,255))
+        draw = ImageDraw.Draw(img, 'RGBA')
+        layout = layout.reshape(-1)
+        layout = trim_tokens(layout, pad_token=self.pad_idx)
+        layout = layout[:len(layout)//5*5].reshape(-1, 5) # guarrantee layout length is divisible by 5
+        
+        box = layout[:, 1:]
+        box[:, 0] = box[:, 0] - self.offset_width
+        box[:, 1] = box[:, 1] - self.offset_height
+        box[:, 2] = box[:, 2] - self.offset_x
+        box[:, 3] = box[:, 3] - self.offset_y
+
+        box[:, [0,2]] = box[:, [0,2]] / (self.resolution_w-1) * 256
+        box[:, [1,3]] = box[:, [1,3]] / (self.resolution_h-1) * 256
+        
+        box[:, [0,1]] =  box[:, [0,1]] + box[:, [2,3]]
+        for i in range(len(layout)):
+            x2, y2, x1, y1 = box[i]
+            cat = self.ID_TO_LABEL[layout[i][0]]
+            col = self.COLORS[cat]
+            draw.rectangle([x1, y1, x2, y2],
+                           outline=tuple(col) + (200,),
+                           fill=tuple(col) + (64,),
+                           width=2)
+
+        # Add border around image
+        img = ImageOps.expand(img, border=2)
+        return img
     
     def __len__(self):
         return len(self.data)
@@ -201,3 +232,10 @@ class SmartCollator():
             batch_input += [self.pad_seq(seq, max_size, self.pad_token_id)]
             
         return np.array(batch_input, dtype=np.int32)
+
+# Utils function
+
+def trim_tokens(layout, pad_token=None):
+    if pad_token is not None:
+        layout = layout[layout!=pad_token]
+    return layout

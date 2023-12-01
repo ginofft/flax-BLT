@@ -1,10 +1,8 @@
-import jax
+import jax, flax, wandb, time
 from jax import jit
 import jax.numpy as jnp
-import flax
 from flax.training import train_state, orbax_utils, common_utils
-import optax
-import orbax
+import optax, orbax
 from clu import metrics
 from torch.utils.data import DataLoader
 from livelossplot import PlotLosses
@@ -166,8 +164,8 @@ class BERTLayoutTrainer:
         pos_info = [[train_dataset.offset_class, train_dataset.number_classes], 
                     [train_dataset.offset_width, train_dataset.resolution_w],
                     [train_dataset.offset_height, train_dataset.resolution_h],
-                    [train_dataset.offset_center_x, train_dataset.resolution_w],
-                    [train_dataset.offset_center_y, train_dataset.resolution_h]]
+                    [train_dataset.offset_x, train_dataset.resolution_w],
+                    [train_dataset.offset_y, train_dataset.resolution_h]]
         seq_len = train_dataset.seq_len
         possible_logit, _ = self._make_possible_mask(vocab_size=vocab_size, pos_info=pos_info,seq_len=seq_len)
         self.rng, train_rng = jax.random.split(self.rng, 2)
