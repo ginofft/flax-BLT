@@ -69,7 +69,6 @@ def top_k_sampling(logits, rng, topk=0, temperature=1.0):
       axis=-1).astype(jnp.int32)
   return sampled_tokens
 
-
 def top_p_logits(logits, topp=0):
   """Finds the top logits with cumulative probability >= top and mask others."""
   logits_sorted = jnp.sort(logits, axis=-1)[Ellipsis, ::-1]  # sort descending

@@ -236,6 +236,7 @@ def get_publaynet_config():
 
 	config = ml_collections.ConfigDict()
 	# Exp info
+	config.name = 'publaynet'
 	config.checkpoint_path = None
 	config.dataset_path = "data/publaynet"
 	config.experiment = "bert_layout"
@@ -250,7 +251,7 @@ def get_publaynet_config():
 	config.train_shuffle = True
 	config.eval_pad_last_batch = False
 	config.eval_batch_size = 64
-	config.save_every_epoch = 50
+	config.save_every_epoch = 20
 
 	# Model info
 	config.layout_dim = 2
@@ -312,6 +313,7 @@ def get_obello_config():
 
 	config = ml_collections.ConfigDict()
 	# Exp info
+	config.name = 'obello'
 	config.checkpoint_path = None
 	config.dataset_path = "data/obello/all"
 	config.experiment = "bert_layout"

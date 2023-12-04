@@ -1,4 +1,4 @@
-import jax, flax, wandb, time
+import jax, flax, wandb, time, random, functools
 from jax import jit
 import jax.numpy as jnp
 from flax.training import train_state, orbax_utils, common_utils
@@ -13,6 +13,7 @@ from typing import Optional
 from pathlib import Path
 
 from .dataset import LayoutDataset, PaddingCollator
+from .decoder import LayoutDecoder
 from .models.biodirectional_layout import BLT
 from .utils import attribute_random_masking, is_notebook, attribute_size_position_masking
 
@@ -66,6 +67,8 @@ class BERTLayoutTrainer:
         self.dtype, self.data_dtype = self._get_dtype()
         self.layout_dim = self.config.layout_dim
         self.total_dim = self.layout_dim*2 + 1
+        wandb.init(project='BLT', config=config,
+                   name=str(int(time.time()))+'_'+config.name)
 
     def preprocess_batch(self, batch, batch_size):
         label = None
@@ -193,8 +196,7 @@ class BERTLayoutTrainer:
                                                  pad_token=train_dataset.pad_idx, layout_dim=self.config.layout_dim)
                 validation_state = self._compute_metrics(state = state, 
                                                          batch=batch,
-                                                         possible_mask = possible_logit)
-                
+                                                         possible_mask = possible_logit)      
             for metric, value in validation_state.metrics.compute().items():
                 metric_history['val_loss'].append(value)
             state = state.replace(metrics=state.metrics.empty())
@@ -210,7 +212,11 @@ class BERTLayoutTrainer:
                 print('Epoch {} train/val loss: {:.6f} / {:.6f}'.format(epoch,
                                                                         logs['loss'],
                                                                         logs['val_loss']))
-            
+            wandb.log({
+                'train_loss': metric_history["loss"][-1],
+                'val_loss': metric_history["val_loss"][-1]
+            }, step=epoch)
+
             validation_loss = metric_history['val_loss'][-1]
             if validation_loss < min_validation_loss:
                 min_validation_loss = validation_loss
@@ -221,6 +227,7 @@ class BERTLayoutTrainer:
                 ckpt = {'model': state, 'epoch':epoch, 
                         'metric_history': metric_history, 'min_loss': min_validation_loss}
                 self._save_checkpoint(ckpt, f'checkpoint_epoch{epoch}')
+                self._sample_layout(epoch, state, val_dataset)
         return min_validation_loss
     
     def test(self):
@@ -388,3 +395,68 @@ class BERTLayoutTrainer:
         orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
         save_args = orbax_utils.save_args_from_target(ckpt)
         orbax_checkpointer.save(self.workdir/name, ckpt, save_args=save_args, force=True)
+
+    def _sample_layout(self, model, epoch, dataloader):
+        # Get based layout 
+        dataset = dataloader.dataset   
+        for sample_batch in dataloader:
+            layout = sample_batch[:4] # get 4 random design
+            break
+
+        # True/False Maskings
+        position_ids = jnp.arange(layout.shape[-1])[None, :]
+        is_pad = layout == dataset.pad_idx
+        is_asset = position_ids % 5 == 0 # [1, seq_len]
+        is_size = functools.reduce(
+            lambda x,y: x|y,
+            [position_ids % 5 == i for i in range(1, 3)]) # [1, seq_len] 
+        is_position = functools.reduce(
+            lambda x,y: x | y,
+            [position_ids % 5 == i for i in range(3, 5)]) # [1, seq_len] 
+
+        # Get Decoder 
+        decoder = LayoutDecoder(dataset.get_vocab_size(), dataset.seq_len, 
+                                self.config.layout_dim, dataset.ID_TO_LABEL,
+                                dataset.COLORS, iterative_nums=np.array([1,7,7]), 
+                                temperature=1.0)
+
+        # C -> S + P
+        mask = (is_asset) | (is_pad)
+        asset_layout = jnp.where(mask, layout, dataset.mask_idx)
+
+        # C + S -> P
+        mask = (is_position) & (~is_pad) 
+        asset_size_layout = jnp.where(mask, dataset.mask_idx, layout)
+
+        # C + S(first element) -> S(other elements) + P
+        mask = ((is_asset) | (is_pad)) | ((is_size) & (position_ids<5))
+        asset_firstSize_layout = jnp.where(mask, layout, dataset.mask_idx)
+
+        pos_info = [[dataset.offset_class, dataset.number_classes], 
+                    [dataset.offset_width, dataset.resolution_w],
+                    [dataset.offset_height, dataset.resolution_h],
+                    [dataset.offset_x, dataset.resolution_w],
+                    [dataset.offset_y, dataset.resolution_h]]
+        possible_logit, _ = self._make_possible_mask(vocab_size=dataset.get_vocab_size(),
+                                                     pos_info=pos_info, 
+                                                     seq_len=dataset.seq_len)
+        
+        seq_asset_layout = decoder.decode(model, asset_layout, possible_logit)
+        seq_size_layout = decoder.decode(model, asset_size_layout, possible_logit)
+        seq_asset_firstSize_layout= decoder.decode(model, asset_firstSize_layout, possible_logit)
+        
+        render_layout = [dataset.render(l) for l in layout]
+        render_asset_layout = [dataset.render(l[-1]) for l in seq_asset_layout]
+        render_pos_layout = [dataset.render(l[-1]) for l in seq_size_layout]
+        render_asset_firstPos_layout = [dataset.render(l[-1]) for l in seq_asset_firstSize_layout]
+
+        wandb.log({
+            "input_layouts": [wandb.Image(pil, caption='input_{:02d}_{:02d}.png'.format(epoch,i))
+                                for i, pil in enumerate(render_layout)],
+            "recon_layouts": [wandb.Image(pil, caption='recon_{:02d}_{:02d}.png'.format(epoch,i))
+                                for i, pil in enumerate(render_asset_layout)],
+            "sample_random_layouts": [wandb.Image(pil, caption='sample_random_{:02d}_{:02d}.png'.format(epoch,i))
+                                        for i, pil in enumerate(render_pos_layout)],
+            "sample_det_layouts": [wandb.Image(pil, caption='sample_det_{:02d}_{:02d}.png'.format(epoch,i))
+                                    for i, pil in enumerate(render_asset_firstPos_layout)],
+        }, step=epoch)

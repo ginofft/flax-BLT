@@ -20,7 +20,7 @@ class LayoutDataset:
     seq_len : int
         sequen length, currently is 5*limit -> subject to change (for 3d data)
     resolution_w : int
-        discrete width resolution
+        discrete wth resolution
     resolution_h : int
         discrte height resolution
     data : list[list[int]]
@@ -203,7 +203,7 @@ class PaddingCollator():
     def collate_padding(self, batch) -> torch.Tensor:
         batch_input = []
         for seq in batch:
-            batch_input += [self.pad_seq(seq, self.seq_len, self.pad_token_id)]
+            batch_input += [self.pad_seq(list(seq), self.seq_len, self.pad_token_id)]
             
         return np.array(batch_input, dtype=np.int32)
     
@@ -234,7 +234,6 @@ class SmartCollator():
         return np.array(batch_input, dtype=np.int32)
 
 # Utils function
-
 def trim_tokens(layout, pad_token=None):
     if pad_token is not None:
         layout = layout[layout!=pad_token]
