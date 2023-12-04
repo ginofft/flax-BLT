@@ -251,7 +251,7 @@ def get_publaynet_config():
 	config.train_shuffle = True
 	config.eval_pad_last_batch = False
 	config.eval_batch_size = 64
-	config.save_every_epoch = 1
+	config.save_every_epoch = 20
 
 	# Model info
 	config.layout_dim = 2
