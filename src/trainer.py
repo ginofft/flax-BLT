@@ -396,7 +396,7 @@ class BERTLayoutTrainer:
         save_args = orbax_utils.save_args_from_target(ckpt)
         orbax_checkpointer.save(self.workdir/name, ckpt, save_args=save_args, force=True)
 
-    def _sample_layout(self, model, epoch, dataloader):
+    def _sample_layout(self, epoch, model, dataloader):
         # Get based layout 
         dataset = dataloader.dataset   
         for sample_batch in dataloader:
