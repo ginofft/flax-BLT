@@ -446,9 +446,9 @@ class BERTLayoutTrainer:
         seq_asset_firstSize_layout= decoder.decode(model, asset_firstSize_layout, possible_logit)
         
         render_layout = [dataset.render(l) for l in layout]
-        render_asset_layout = [dataset.render(l[-1]) for l in seq_asset_layout]
-        render_pos_layout = [dataset.render(l[-1]) for l in seq_size_layout]
-        render_asset_firstPos_layout = [dataset.render(l[-1]) for l in seq_asset_firstSize_layout]
+        render_asset_layout = [dataset.render(np.array(l[-1], copy=False)) for l in seq_asset_layout]
+        render_pos_layout = [dataset.render(np.array(l[-1], copy=False)) for l in seq_size_layout]
+        render_asset_firstPos_layout = [dataset.render(np.array(l[-1], copy=False)) for l in seq_asset_firstSize_layout]
 
         wandb.log({
             "input_layouts": [wandb.Image(pil, caption='input_{:02d}_{:02d}.png'.format(epoch,i))
