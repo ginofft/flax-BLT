@@ -447,16 +447,16 @@ class BERTLayoutTrainer:
         
         render_layout = [dataset.render(l) for l in layout]
         render_asset_layout = [dataset.render(np.array(l[-1], copy=False)) for l in seq_asset_layout]
-        render_pos_layout = [dataset.render(np.array(l[-1], copy=False)) for l in seq_size_layout]
+        render_size_layout = [dataset.render(np.array(l[-1], copy=False)) for l in seq_size_layout]
         render_asset_firstPos_layout = [dataset.render(np.array(l[-1], copy=False)) for l in seq_asset_firstSize_layout]
 
         wandb.log({
-            "input_layouts": [wandb.Image(pil, caption='input_{:02d}_{:02d}.png'.format(epoch,i))
+            "base_layouts": [wandb.Image(pil, caption='input_{:02d}_{:02d}.png'.format(epoch,i))
                                 for i, pil in enumerate(render_layout)],
-            "recon_layouts": [wandb.Image(pil, caption='recon_{:02d}_{:02d}.png'.format(epoch,i))
+            "C->S+P layouts": [wandb.Image(pil, caption='recon_{:02d}_{:02d}.png'.format(epoch,i))
                                 for i, pil in enumerate(render_asset_layout)],
-            "sample_random_layouts": [wandb.Image(pil, caption='sample_random_{:02d}_{:02d}.png'.format(epoch,i))
-                                        for i, pil in enumerate(render_pos_layout)],
-            "sample_det_layouts": [wandb.Image(pil, caption='sample_det_{:02d}_{:02d}.png'.format(epoch,i))
+            "C+S->P layouts": [wandb.Image(pil, caption='sample_random_{:02d}_{:02d}.png'.format(epoch,i))
+                                        for i, pil in enumerate(render_size_layout)],
+            "C+S(first) -> S(remain)+P layout": [wandb.Image(pil, caption='sample_det_{:02d}_{:02d}.png'.format(epoch,i))
                                     for i, pil in enumerate(render_asset_firstPos_layout)],
         }, step=epoch)
