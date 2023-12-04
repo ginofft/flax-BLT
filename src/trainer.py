@@ -227,7 +227,7 @@ class BERTLayoutTrainer:
                 ckpt = {'model': state, 'epoch':epoch, 
                         'metric_history': metric_history, 'min_loss': min_validation_loss}
                 self._save_checkpoint(ckpt, f'checkpoint_epoch{epoch}')
-                self._sample_layout(epoch, state, val_dataset)
+                self._sample_layout(epoch, state, val_dataloader)
         return min_validation_loss
     
     def test(self):
