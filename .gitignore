@@ -2,7 +2,7 @@ playground.ipynb
 data/images/**
 data/layoutdata/renders/**
 data/obello
-data/publaynet/original.json
+data/publaynet/**
 git-filter-repo.py
 data/layout_yinhe/**
 wandb/**

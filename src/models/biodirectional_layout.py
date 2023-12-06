@@ -96,7 +96,6 @@ class LayoutEmbed(linen.Module):
 
         return input_embeddings
 
-
 class BLT(linen.Module):
     use_vertical: bool
     vocab_size: int
