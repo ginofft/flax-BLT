@@ -55,7 +55,7 @@ class BERTLayoutTrainer:
         process batch to model's input format. Mainly used to create [MASK] tokens.
     """
 
-    def __init__(self, config, workdir: Optional[str] = None, wandb=True):
+    def __init__(self, config, workdir: Optional[str] = None, use_wandb=True):
         self.config = config
         if workdir is not None:
             self.workdir = Path(workdir)
@@ -67,7 +67,7 @@ class BERTLayoutTrainer:
         self.dtype, self.data_dtype = self._get_dtype()
         self.layout_dim = self.config.layout_dim
         self.total_dim = self.layout_dim*2 + 1
-        if wandb:
+        if use_wandb:
             wandb.init(project='BLT', config=config,
                     name=str(int(time.time()))+'_'+config.name)
 
