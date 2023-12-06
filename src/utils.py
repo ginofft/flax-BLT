@@ -244,14 +244,14 @@ def get_publaynet_config():
 	config.image_size = 256
 
 	# Training info
-	config.epoch = 500
+	config.epoch = 100
 	config.seed = 0
 	config.max_length = 130
 	config.batch_size = 64
 	config.train_shuffle = True
 	config.eval_pad_last_batch = False
 	config.eval_batch_size = 64
-	config.save_every_epoch = 20
+	config.save_every_epoch = 5
 
 	# Model info
 	config.layout_dim = 2
