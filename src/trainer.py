@@ -71,7 +71,7 @@ class BERTLayoutTrainer:
             wandb.init(project='BLT', config=config,
                     name=str(int(time.time()))+'_'+config.name)
         else:
-            wandb.init(id = wandb_id)
+            wandb.init(id = wandb_id, resume='must')
 
     def preprocess_batch(self, batch, batch_size):
         label = None
