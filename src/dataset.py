@@ -130,10 +130,10 @@ class LayoutDataset:
             elements = []
             for box in entries['elements'][:self.limit]:
                 class_id = self.LABEL_TO_ID[box["class"]]
-                x = box['x']
-                y = box['y']
-                width = box["width"]
-                height = box["height"]
+                x = np.clip(box['x'],0,1)
+                y = np.clip(box['y'],0,1)
+                width = np.clip(box['width'],0,1)
+                height = np.clip(box['height'],0,1)
 
                 discrete_x = round(x * (self.resolution_w - 1)) + self.offset_x
                 discrete_y = round(y * (self.resolution_h - 1)) + self.offset_y
