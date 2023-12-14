@@ -82,8 +82,6 @@ class LayoutDataset:
     def _process_config(self, config):
         """Reading config
         """
-        self.FRAME_WIDTH = config.FRAME_WIDTH
-        self.FRAME_HEIGHT = config.FRAME_HEIGHT
         self.COLORS = config.COLORS
         self.LABEL_NAMES = config.LABEL_NAMES
         self.number_classes = config.NUMBER_LABELS
@@ -127,6 +125,9 @@ class LayoutDataset:
         keys = []
         for entries in data: 
             keys.append(entries["name"])
+            entries["elements"] = sorted(entries['elements'], 
+                                         key=lambda x: self.LABEL_TO_ID.get(x['class'], 
+                                                                            len(self.LABEL_TO_ID)))
             elements = []
             for box in entries['elements'][:self.limit]:
                 class_id = self.LABEL_TO_ID[box["class"]]

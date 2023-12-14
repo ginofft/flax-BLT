@@ -260,7 +260,6 @@ def get_publaynet_config():
 	config.sequential_embedding = True
 	config.shuffle_buffer_size = 10
 	config.use_vae = True
-	config.share_embeddings = True
 	config.num_layers = 4
 	config.qkv_dim = 512
 	config.mlp_dim = 2048
@@ -292,15 +291,12 @@ def get_publaynet_config():
 			"text": (253, 141, 28),
 			"background": (200, 200, 200)}
 
-	config.dataset.FRAME_WIDTH = 1050
-	config.dataset.FRAME_HEIGHT = 1485
-
 	config.dataset.ID_TO_LABEL = frozendict.frozendict({
-			0: "text",
-			1: "title",
+			0: "figure",
+			1: "table",
 			2: "list",
-			3: "table",
-			4: "figure",
+			3: "title",
+			4: "text",
 		})
 	config.dataset.NUMBER_LABELS = 5
 	config.dataset.LABEL_TO_ID_ = frozendict.frozendict(
@@ -371,9 +367,6 @@ def get_obello_config():
 			'shape' : (128, 0, 64),
 			'background': (200,200,200)
 			}
-
-	config.dataset.FRAME_WIDTH = 1050
-	config.dataset.FRAME_HEIGHT = 1485
 
 	config.dataset.ID_TO_LABEL = frozendict.frozendict({
 		0: 'Image',
