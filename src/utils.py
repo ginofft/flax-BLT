@@ -381,3 +381,74 @@ def get_obello_config():
 	config.dataset.LABEL_TO_ID_ = frozendict.frozendict(
 			{l: i for i,l in config.dataset.ID_TO_LABEL.items()})
 	return config
+
+def get_alibaba_config():
+	"""Gets the default hyperparameter configuration."""
+
+	config = ml_collections.ConfigDict()
+	# Exp info
+	config.name = 'alibaba'
+	config.checkpoint_path = None
+	config.dataset_path = "data/alibaba"
+	config.experiment = "bert_layout"
+	config.model_class = "bert_layout"
+	config.image_size = 256
+
+	# Training info
+	config.epoch = 150
+	config.seed = 0
+	config.max_length = 130
+	config.batch_size = 64
+	config.train_shuffle = True
+	config.eval_pad_last_batch = False
+	config.eval_batch_size = 64
+	config.save_every_epoch = 5
+
+	# Model info
+	config.layout_dim = 2
+	config.dtype = "float32"
+	config.autoregressive = False
+	config.sequential_embedding = True
+	config.shuffle_buffer_size = 10
+	config.num_layers = 4
+	config.qkv_dim = 512
+	config.mlp_dim = 1024
+	config.num_heads = 8
+	config.dropout_rate = 0.1
+	config.attention_dropout_rate = 0.3
+	config.label_smoothing = 0.
+	config.sampling_method = "greedy"
+	config.use_vertical_info = False
+
+	# Optimizer info
+	config.optimizer = ml_collections.ConfigDict()
+	config.optimizer.type = "adam"
+	config.optimizer.warmup_steps = 4000
+	config.optimizer.lr = 5e-3	
+	config.optimizer.beta1 = 0.9
+	config.optimizer.beta2 = 0.98
+	config.optimizer.weight_decay = 0.01
+	config.beta_rate = 1 / 20_000
+
+	# Dataset info
+	config.dataset = ml_collections.ConfigDict()
+	config.dataset.LABEL_NAMES = ('Logo', 'text', 'underlay', 'embellishment')
+	config.dataset.COLORS = {
+			'underlay' : (193, 0, 0),
+			'text' : (0, 193, 0),
+			'Logo' : (0, 0, 193),
+			'embellishment': (128, 128, 0),
+			'background': (200,200,200)
+			}
+
+	config.dataset.ID_TO_LABEL = frozendict.frozendict({
+		0: 'Logo',
+		1: 'text',
+		2: 'embellishment',
+		3: 'underlay',
+	})
+
+	config.dataset.NUMBER_LABELS = 4
+	config.dataset.LABEL_TO_ID_ = frozendict.frozendict(
+			{l: i for i,l in config.dataset.ID_TO_LABEL.items()})
+	return config

@@ -6,6 +6,7 @@ data/publaynet/**
 git-filter-repo.py
 data/layout_yinhe/**
 wandb/**
+data/alibaba/**
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
